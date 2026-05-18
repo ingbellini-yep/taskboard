@@ -201,5 +201,16 @@ async def _send_help(chat_id: int, bot: telegram.Bot) -> None:
 
 
 def process_update(update_data: dict[str, Any]) -> None:
-    """Entry point sincrono per Vercel — avvia il loop async."""
-    asyncio.run(dispatch(update_data))
+    """Entry point sincrono per Vercel — gestisce event loop serverless."""
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            raise RuntimeError("closed")
+        loop.run_until_complete(dispatch(update_data))
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(dispatch(update_data))
+        finally:
+            loop.close()
