@@ -1,13 +1,13 @@
 cat > vercel.json << 'EOF'
 {
   "version": 2,
-  "functions": {
-    "api/webhook.py": { "runtime": "python3.12.0", "maxDuration": 10 },
-    "api/cron.py":    { "runtime": "python3.12.0", "maxDuration": 10 }
-  },
+  "builds": [
+    { "src": "api/webhook.py", "use": "@vercel/python" },
+    { "src": "api/cron.py", "use": "@vercel/python" }
+  ],
   "routes": [
     { "src": "/api/webhook", "dest": "/api/webhook.py" },
-    { "src": "/api/cron",    "dest": "/api/cron.py"    }
+    { "src": "/api/cron", "dest": "/api/cron.py" }
   ],
   "crons": [
     {
