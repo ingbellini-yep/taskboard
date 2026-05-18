@@ -34,8 +34,8 @@ async def on_project_selected(chat_id: int, prj_id: str, prj_code: str,
     await bot.send_message(chat_id, f"📁 *{prj_label}*\n\n📅 Titolo dell'evento:", parse_mode="Markdown")
 
 
-async def on_bucket_selected(chat_id: int, bot: telegram.Bot) -> None:
-    set_session(chat_id, EV_TITLE, {"bucket": "inbox", "prj_id": None})
+async def on_bucket_selected(chat_id: int, bucket: str, bot: telegram.Bot) -> None:
+    set_session(chat_id, EV_TITLE, {"bucket": bucket, "prj_id": None})
     await bot.send_message(chat_id, "📅 Titolo dell'evento:")
 
 

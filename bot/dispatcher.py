@@ -18,29 +18,20 @@ from .config import (
     EV_PROJECT, EV_TITLE, EV_START, EV_DURATION, EV_ALERT,
     PROJ_SEARCH,
 )
-from .database import get_project, search_projects
+from .database import get_project
 from .session import get_session, set_session, clear_session
 
 from .handlers import task, memo, event, oggi, progetto, inbox
 
-_bot: telegram.Bot | None = None
-
-
-def get_bot() -> telegram.Bot:
-    global _bot
-    if _bot is None:
-        _bot = telegram.Bot(token=BOT_TOKEN)
-    return _bot
-
 
 async def dispatch(update_data: dict[str, Any]) -> None:
-    bot = get_bot()
-    update = telegram.Update.de_json(update_data, bot)
-
-    if update.callback_query:
-        await _handle_callback(update.callback_query, bot)
-    elif update.message:
-        await _handle_message(update.message, bot)
+    # async with bot: gestisce initialize()/shutdown() — necessario in PTB v20+
+    async with telegram.Bot(token=BOT_TOKEN) as bot:
+        update = telegram.Update.de_json(update_data, bot)
+        if update.callback_query:
+            await _handle_callback(update.callback_query, bot)
+        elif update.message:
+            await _handle_message(update.message, bot)
 
 
 # ─── Message handler ──────────────────────────────────────────────────────────
@@ -51,59 +42,55 @@ async def _handle_message(msg: telegram.Message, bot: telegram.Bot) -> None:
     chat_id = msg.chat.id
     text = msg.text or ""
 
-    # Comandi
+    # Comandi (update sintetico senza get_bot() — usiamo msg direttamente)
+    upd = _make_update(msg)
     if text.startswith("/task"):
-        await task.cmd_task(msg.get_bot() and _make_update(msg), bot)
+        await task.cmd_task(upd, bot)
         return
     if text.startswith("/memo"):
-        await memo.cmd_memo(_make_update(msg), bot)
+        await memo.cmd_memo(upd, bot)
         return
     if text.startswith("/ev"):
-        await event.cmd_ev(_make_update(msg), bot)
+        await event.cmd_ev(upd, bot)
         return
     if text.startswith("/oggi"):
-        await oggi.cmd_oggi(_make_update(msg), bot)
+        await oggi.cmd_oggi(upd, bot)
         return
     if text.startswith("/progetto"):
-        await progetto.cmd_progetto(_make_update(msg), bot)
+        await progetto.cmd_progetto(upd, bot)
         return
     if text.startswith("/inbox"):
-        await inbox.cmd_inbox(_make_update(msg), bot)
+        await inbox.cmd_inbox(upd, bot)
         return
     if text.startswith("/start") or text.startswith("/help"):
         await _send_help(chat_id, bot)
         return
 
-    # Testo libero: elaboro in base allo stato sessione
+    # Testo/media libero: elaboro in base allo stato sessione
     sess = get_session(chat_id)
     state = sess["state"]
     data  = sess["data"]
 
     if state == TASK_TITLE:
-        await task.on_title(_make_update(msg), bot)
+        await task.on_title(upd, bot)
     elif state == TASK_DUE:
-        await task.on_due(_make_update(msg), bot)
+        await task.on_due(upd, bot)
     elif state == MEMO_CONTENT:
-        await memo.on_content(_make_update(msg), bot)
+        await memo.on_content(upd, bot)
     elif state == EV_TITLE:
-        await event.on_title(_make_update(msg), bot)
+        await event.on_title(upd, bot)
     elif state == EV_START:
-        await event.on_start(_make_update(msg), bot)
+        await event.on_start(upd, bot)
     elif state == EV_DURATION:
-        await event.on_duration(_make_update(msg), bot)
+        await event.on_duration(upd, bot)
     elif state == EV_ALERT:
-        # Attendiamo valore custom alert
         if data.get("_waiting_custom_alert"):
-            await event.on_custom_alert_value(_make_update(msg), bot)
+            await event.on_custom_alert_value(upd, bot)
     elif state == PROJ_SEARCH:
-        await progetto.on_search_query(_make_update(msg), bot)
+        await progetto.on_search_query(upd, bot)
     else:
-        # IDLE + messaggio non-comando → ignora o suggerisci
         if text and not text.startswith("/"):
-            await bot.send_message(
-                chat_id,
-                "Usa /task, /memo, /ev, /oggi, /progetto o /inbox.",
-            )
+            await bot.send_message(chat_id, "Usa /task, /memo, /ev, /oggi, /progetto o /inbox.")
 
 
 # ─── Callback query handler ───────────────────────────────────────────────────
@@ -122,9 +109,9 @@ async def _handle_callback(cq: telegram.CallbackQuery, bot: telegram.Bot) -> Non
         if not prj:
             await bot.send_message(chat_id, "❌ Progetto non trovato.")
             return
-        prj_code = prj["prj_code"]
-        ws_id    = prj["prj_ws_id"]
-        ws_code  = prj["prj_ws_code"]
+        prj_code  = prj["prj_code"]
+        ws_id     = prj["prj_ws_id"]
+        ws_code   = prj["prj_ws_code"]
         prj_label = prj["prj_label"]
 
         if state == TASK_PROJECT:
@@ -134,18 +121,17 @@ async def _handle_callback(cq: telegram.CallbackQuery, bot: telegram.Bot) -> Non
         elif state == EV_PROJECT:
             await event.on_project_selected(chat_id, prj_id, prj_code, ws_id, ws_code, prj_label, bot)
         elif state == IDLE:
-            # Proveniente da ricerca /progetto
             await progetto.show_project_detail(chat_id, prj_id, bot)
 
     # ── Bucket selezionato (inbox / small) ────────────────────────────────
     elif data_str.startswith("bucket:"):
-        bucket = data_str[7:]  # "inbox" o "small"
+        bucket = data_str[7:]
         if state == TASK_PROJECT:
             await task.on_bucket_selected(chat_id, bucket, bot)
         elif state == MEMO_PROJECT:
             await memo.on_bucket_selected(chat_id, bucket, bot)
         elif state == EV_PROJECT:
-            await event.on_bucket_selected(chat_id, bot)
+            await event.on_bucket_selected(chat_id, bucket, bot)
 
     # ── Ricerca progetto ───────────────────────────────────────────────────
     elif data_str == "search_prj":
@@ -182,16 +168,15 @@ async def _handle_callback(cq: telegram.CallbackQuery, bot: telegram.Bot) -> Non
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
 def _make_update(msg: telegram.Message) -> telegram.Update:
-    """Crea un Update sintetico contenente solo il messaggio."""
     return telegram.Update(update_id=0, message=msg)
 
 
 async def _send_help(chat_id: int, bot: telegram.Bot) -> None:
     await bot.send_message(
         chat_id,
-        "*Taskboard Bot*\n\n"
+        "📋 *Taskboard Bot*\n\n"
         "/task — Nuovo task\n"
-        "/memo — Nuovo memo (testo, foto, vocale)\n"
+        "/memo — Nuovo memo \\(testo, foto, vocale\\)\n"
         "/ev — Nuovo evento con conflict check\n"
         "/oggi — Digest giornata corrente\n"
         "/progetto \\[nome\\] — Apri progetto\n"
@@ -201,7 +186,7 @@ async def _send_help(chat_id: int, bot: telegram.Bot) -> None:
 
 
 def process_update(update_data: dict[str, Any]) -> None:
-    """Entry point sincrono per Vercel — crea sempre un loop fresco (warm-start safe)."""
+    """Entry point sincrono per Vercel — loop fresco ad ogni chiamata (warm-start safe)."""
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
@@ -209,4 +194,3 @@ def process_update(update_data: dict[str, Any]) -> None:
     finally:
         loop.close()
         asyncio.set_event_loop(None)
-

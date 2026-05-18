@@ -5,9 +5,7 @@
     "api/cron.py":    { "runtime": "python3.12", "maxDuration": 10 }
   },
   "rewrites": [
-    { "source": "/api/webhook", "destination": "/api/webhook.py" },
-    { "source": "/api/cron",    "destination": "/api/cron.py"    },
-    { "source": "/(.*)",        "destination": "/index.html"     }
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "crons": [
     {
