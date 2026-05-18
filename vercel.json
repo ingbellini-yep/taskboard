@@ -1,8 +1,13 @@
 {
+  "version": 2,
+  "functions": {
+    "api/webhook.py": { "runtime": "python3.12", "maxDuration": 10 },
+    "api/cron.py":    { "runtime": "python3.12", "maxDuration": 10 }
+  },
   "rewrites": [
     { "source": "/api/webhook", "destination": "/api/webhook.py" },
-    { "source": "/api/cron", "destination": "/api/cron.py" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/api/cron",    "destination": "/api/cron.py"    },
+    { "source": "/(.*)",        "destination": "/index.html"     }
   ],
   "crons": [
     {

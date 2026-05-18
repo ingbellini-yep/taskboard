@@ -4,7 +4,7 @@ BOT_TOKEN: str = os.environ["TELEGRAM_BOT_TOKEN"]
 WEBHOOK_SECRET: str = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
 CRON_SECRET: str = os.environ.get("CRON_SECRET", "")
 
-SUPABASE_URL: str = os.environ["SUPABASE_URL"]
+SUPABASE_URL: str = os.environ.get("SUPABASE_URL") or os.environ["VITE_SUPABASE_URL"]
 SUPABASE_SERVICE_KEY: str = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
 
 GROQ_API_KEY: str = os.environ["GROQ_API_KEY"]
