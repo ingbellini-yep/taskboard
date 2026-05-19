@@ -1,58 +1,51 @@
 """Handler /progetto — visualizzazione progetto e ricerca."""
 from __future__ import annotations
 
-import telegram
-
 from ..config import PROJ_SEARCH
 from ..database import search_projects, db
 from ..keyboards import search_results_keyboard
-from ..session import set_session, get_session, clear_session
+from ..session import set_session, clear_session
+from .. import tgapi
 
 
-async def cmd_progetto(update: telegram.Update, bot: telegram.Bot) -> None:
-    chat_id = update.effective_chat.id
-    text = update.message.text or ""
-    # /progetto nomeparziale → ricerca diretta
+def cmd_progetto(chat_id: int, text: str) -> None:
     parts = text.split(maxsplit=1)
     query = parts[1].strip() if len(parts) > 1 else ""
-
     if query:
-        await _show_search_results(chat_id, query, bot)
+        _show_search_results(chat_id, query)
     else:
         set_session(chat_id, PROJ_SEARCH, {})
-        await bot.send_message(chat_id, "🔍 Inserisci il nome (parziale) del progetto:")
+        tgapi.send_message(chat_id, "🔍 Inserisci il nome (parziale) del progetto:")
 
 
-async def on_search_query(update: telegram.Update, bot: telegram.Bot) -> None:
-    chat_id = update.effective_chat.id
-    query = update.message.text.strip()
+def on_search_query(chat_id: int, query: str) -> None:
     clear_session(chat_id)
-    await _show_search_results(chat_id, query, bot)
+    _show_search_results(chat_id, query)
 
 
-async def _show_search_results(chat_id: int, query: str, bot: telegram.Bot) -> None:
+def show_project_detail(chat_id: int, prj_id: str) -> None:
+    _show_project_detail(chat_id, prj_id)
+
+
+def _show_search_results(chat_id: int, query: str) -> None:
     projects = search_projects(query)
     if not projects:
-        await bot.send_message(chat_id, f"❌ Nessun progetto trovato per «{query}».")
+        tgapi.send_message(chat_id, f"❌ Nessun progetto trovato per «{query}».")
         return
     if len(projects) == 1:
-        await _show_project_detail(chat_id, projects[0]["prj_id"], bot)
+        _show_project_detail(chat_id, projects[0]["prj_id"])
     else:
-        await bot.send_message(
+        tgapi.send_message(
             chat_id,
             f"🔍 Trovati {len(projects)} progetti per «{query}»:",
             reply_markup=search_results_keyboard(projects),
         )
 
 
-async def show_project_detail(chat_id: int, prj_id: str, bot: telegram.Bot) -> None:
-    await _show_project_detail(chat_id, prj_id, bot)
-
-
-async def _show_project_detail(chat_id: int, prj_id: str, bot: telegram.Bot) -> None:
+def _show_project_detail(chat_id: int, prj_id: str) -> None:
     prj_r = db().table("tb_projects").select("*").eq("prj_id", prj_id).execute()
     if not prj_r.data:
-        await bot.send_message(chat_id, "❌ Progetto non trovato.")
+        tgapi.send_message(chat_id, "❌ Progetto non trovato.")
         return
     prj = prj_r.data[0]
 
@@ -85,4 +78,4 @@ async def _show_project_detail(chat_id: int, prj_id: str, bot: telegram.Bot) -> 
     else:
         lines.append("\n_Nessun record aperto._")
 
-    await bot.send_message(chat_id, "\n".join(lines), parse_mode="Markdown")
+    tgapi.send_message(chat_id, "\n".join(lines), parse_mode="Markdown")

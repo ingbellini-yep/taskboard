@@ -1,14 +1,12 @@
 """Handler /inbox — visualizza record in inbox."""
 from __future__ import annotations
 
-import telegram
-
 from ..database import get_inbox_records
 from ..messages import inbox_list
+from .. import tgapi
 
 
-async def cmd_inbox(update: telegram.Update, bot: telegram.Bot) -> None:
-    chat_id = update.effective_chat.id
+def cmd_inbox(chat_id: int) -> None:
     records = get_inbox_records()
     msg = inbox_list(records)
-    await bot.send_message(chat_id, msg, parse_mode="Markdown")
+    tgapi.send_message(chat_id, msg, parse_mode="Markdown")

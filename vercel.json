@@ -1,10 +1,8 @@
 {
   "version": 2,
-  "functions": {
-    "api/webhook.py": { "runtime": "@vercel/python", "maxDuration": 10 },
-    "api/cron.py":    { "runtime": "@vercel/python", "maxDuration": 10 }
-  },
   "rewrites": [
+    { "source": "/api/webhook", "destination": "/api/webhook.py" },
+    { "source": "/api/cron", "destination": "/api/cron.py" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "crons": [

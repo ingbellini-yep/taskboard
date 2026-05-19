@@ -3,19 +3,19 @@ from __future__ import annotations
 
 import telegram
 
-from ..config import MEMO_PROJECT, MEMO_CONTENT, MEMO_CONFIRM, IDLE
+from ..config import MEMO_PROJECT, MEMO_CONTENT, MEMO_CONFIRM
 from ..database import create_record, generate_record_code
 from ..groq_client import transcribe_audio
 from ..keyboards import project_keyboard, confirm_keyboard
 from ..messages import record_saved
 from ..session import set_session, get_session, clear_session
 from ..storage import upload_file, save_attachment
+from .. import tgapi
 
 
-async def cmd_memo(update: telegram.Update, bot: telegram.Bot) -> None:
-    chat_id = update.effective_chat.id
+def cmd_memo(chat_id: int) -> None:
     set_session(chat_id, MEMO_PROJECT, {})
-    await bot.send_message(
+    tgapi.send_message(
         chat_id,
         "📝 *Nuovo Memo*\nSeleziona il progetto:",
         parse_mode="Markdown",
@@ -23,64 +23,67 @@ async def cmd_memo(update: telegram.Update, bot: telegram.Bot) -> None:
     )
 
 
-async def on_project_selected(chat_id: int, prj_id: str, prj_code: str,
-                               ws_id: str, ws_code: str, prj_label: str, bot: telegram.Bot) -> None:
+def on_project_selected(chat_id: int, prj_id: str, prj_code: str,
+                          ws_id: str, ws_code: str, prj_label: str) -> None:
     set_session(chat_id, MEMO_CONTENT, {
         "prj_id": prj_id, "prj_code": prj_code,
         "ws_id": ws_id, "ws_code": ws_code,
         "prj_label": prj_label, "bucket": "project",
     })
-    await bot.send_message(
+    tgapi.send_message(
         chat_id,
-        f"📁 *{prj_label}*\n\n📝 Scrivi il memo \\(testo, foto o vocale\\):",
-        parse_mode="MarkdownV2",
+        f"📁 *{prj_label}*\n\n📝 Scrivi il memo (testo, foto o vocale):",
+        parse_mode="Markdown",
     )
 
 
-async def on_bucket_selected(chat_id: int, bucket: str, bot: telegram.Bot) -> None:
-    label = "Inbox"
+def on_bucket_selected(chat_id: int, bucket: str) -> None:
     set_session(chat_id, MEMO_CONTENT, {"bucket": bucket, "prj_id": None})
-    await bot.send_message(chat_id, f"📁 *{label}*\n\n📝 Scrivi il memo \\(testo, foto o vocale\\):", parse_mode="MarkdownV2")
+    tgapi.send_message(
+        chat_id,
+        "📁 *Inbox*\n\n📝 Scrivi il memo (testo, foto o vocale):",
+        parse_mode="Markdown",
+    )
 
 
-async def on_content(update: telegram.Update, bot: telegram.Bot) -> None:
-    """Ricevuto contenuto memo (testo/foto/vocale) — chiedo conferma."""
-    chat_id = update.effective_chat.id
+def on_content(chat_id: int, msg: telegram.Message) -> None:
+    """Ricevuto contenuto memo — trascrivo/previzzo e chiedo conferma.
+
+    I byte del file NON vengono salvati in sessione (non è JSON-serializzabile).
+    Vengono ri-scaricati da Telegram al momento della conferma usando il file_id.
+    """
     sess = get_session(chat_id)
-    msg = update.message
 
     title: str = ""
     body: str | None = None
-    pending_file: dict | None = None  # {bytes, mime, ext, caption, duration_sec}
+    # pending_file contiene solo metadata + file_id (no bytes)
+    pending_file: dict | None = None
+    preview: str = ""
 
     if msg.voice:
-        # Vocale: scarico e trascrivo
-        await bot.send_message(chat_id, "🎤 Sto trascrivendo il vocale…")
-        file = await bot.get_file(msg.voice.file_id)
-        audio_bytes = await file.download_as_bytearray()
-        transcription = transcribe_audio(bytes(audio_bytes))
+        tgapi.send_message(chat_id, "🎤 Sto trascrivendo il vocale…")
+        file_info = tgapi.get_file(msg.voice.file_id)
+        audio_bytes = tgapi.download_file(file_info["file_path"])
+        transcription = transcribe_audio(audio_bytes, f"{msg.voice.file_id}.ogg")
         title = _truncate_title(transcription)
         body = transcription
         pending_file = {
-            "bytes":       bytes(audio_bytes),
-            "mime":        "audio/ogg",
-            "ext":         "ogg",
-            "caption":     transcription,
-            "duration":    msg.voice.duration,
-            "filename":    f"{msg.voice.file_id}.ogg",
+            "file_id":  msg.voice.file_id,
+            "mime":     "audio/ogg",
+            "ext":      "ogg",
+            "caption":  transcription,
+            "duration": msg.voice.duration,
+            "filename": f"{msg.voice.file_id}.ogg",
         }
         preview = f"🎤 Trascritto:\n_{transcription}_"
 
     elif msg.photo:
-        # Foto: scarico la risoluzione più alta
         photo = msg.photo[-1]
-        file = await bot.get_file(photo.file_id)
-        photo_bytes = await file.download_as_bytearray()
         caption = msg.caption or ""
         title = caption if caption else "Foto"
         body = caption or None
         pending_file = {
-            "bytes":    bytes(photo_bytes),
+            "file_id":  photo.file_id,
             "mime":     "image/jpeg",
             "ext":      "jpg",
             "caption":  caption,
@@ -95,15 +98,14 @@ async def on_content(update: telegram.Update, bot: telegram.Bot) -> None:
         preview = f"📝 _{msg.text}_"
 
     else:
-        await bot.send_message(chat_id, "❌ Formato non supportato. Invia testo, foto o vocale.")
+        tgapi.send_message(chat_id, "❌ Formato non supportato. Invia testo, foto o vocale.")
         return
 
-    # Salvo dati in sessione per conferma
     data = sess["data"]
     data.update({"title": title, "body": body, "pending_file": pending_file})
     set_session(chat_id, MEMO_CONFIRM, data)
 
-    await bot.send_message(
+    tgapi.send_message(
         chat_id,
         f"{preview}\n\nConfermi il salvataggio?",
         parse_mode="Markdown",
@@ -111,18 +113,17 @@ async def on_content(update: telegram.Update, bot: telegram.Bot) -> None:
     )
 
 
-async def on_confirm(chat_id: int, bot: telegram.Bot) -> None:
+def on_confirm(chat_id: int) -> None:
     sess = get_session(chat_id)
-    data = sess["data"]
-    await _save_memo(chat_id, data, bot)
+    _save_memo(chat_id, sess["data"])
 
 
-async def on_cancel(chat_id: int, bot: telegram.Bot) -> None:
+def on_cancel(chat_id: int) -> None:
     clear_session(chat_id)
-    await bot.send_message(chat_id, "❌ Memo annullato.")
+    tgapi.send_message(chat_id, "❌ Memo annullato.")
 
 
-async def _save_memo(chat_id: int, data: dict, bot: telegram.Bot) -> None:
+def _save_memo(chat_id: int, data: dict) -> None:
     prj_id = data.get("prj_id")
     bucket = data.get("bucket", "project")
 
@@ -147,16 +148,17 @@ async def _save_memo(chat_id: int, data: dict, bot: telegram.Bot) -> None:
     record = create_record(payload)
     rec_id = record["rec_id"]
 
-    # Upload allegato se presente
     pf = data.get("pending_file")
-    if pf and pf.get("bytes"):
-        path = upload_file(pf["bytes"], pf["mime"], pf["ext"])
+    if pf and pf.get("file_id"):
+        file_info = tgapi.get_file(pf["file_id"])
+        file_bytes = tgapi.download_file(file_info["file_path"])
+        path = upload_file(file_bytes, pf["mime"], pf["ext"])
         save_attachment(
             rec_id=rec_id,
             path=path,
             filename=pf["filename"],
             mime_type=pf["mime"],
-            size_bytes=len(pf["bytes"]),
+            size_bytes=len(file_bytes),
             caption=pf.get("caption"),
             duration_sec=pf.get("duration"),
         )
@@ -164,7 +166,7 @@ async def _save_memo(chat_id: int, data: dict, bot: telegram.Bot) -> None:
     clear_session(chat_id)
     display_code = code or bucket.upper()
     msg = record_saved(display_code, data["title"], data.get("prj_label"), None, "M")
-    await bot.send_message(chat_id, msg, parse_mode="Markdown")
+    tgapi.send_message(chat_id, msg, parse_mode="Markdown")
 
 
 def _truncate_title(text: str, max_len: int = 80) -> str:
