@@ -1,20 +1,29 @@
+"""
+Configurazione da variabili d'ambiente.
+Tutti i valori sono lazy (os.environ.get con default ""):
+- non sollevano KeyError all'import (necessario per Vercel cold start)
+- sollevano un errore chiaro solo quando il valore vuoto viene usato
+"""
 import os
 
-BOT_TOKEN: str = os.environ["TELEGRAM_BOT_TOKEN"]
-WEBHOOK_SECRET: str = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
-CRON_SECRET: str = os.environ.get("CRON_SECRET", "")
+# ── Telegram ──────────────────────────────────────────────────────────────────
+BOT_TOKEN        = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+WEBHOOK_SECRET   = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
+CRON_SECRET      = os.environ.get("CRON_SECRET", "")
+TELEGRAM_CHAT_ID = int(os.environ.get("TELEGRAM_CHAT_ID", "0"))
 
-SUPABASE_URL: str = os.environ.get("SUPABASE_URL") or os.environ["VITE_SUPABASE_URL"]
-SUPABASE_SERVICE_KEY: str = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+# ── Supabase ──────────────────────────────────────────────────────────────────
+# Supporta sia SUPABASE_URL (backend) sia VITE_SUPABASE_URL (frontend = stessa URL)
+SUPABASE_URL        = os.environ.get("SUPABASE_URL") or os.environ.get("VITE_SUPABASE_URL", "")
+SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 
-GROQ_API_KEY: str = os.environ["GROQ_API_KEY"]
+# ── Groq ──────────────────────────────────────────────────────────────────────
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 
-# Chat ID dell'utente per il digest mattutino
-TELEGRAM_CHAT_ID: int = int(os.environ.get("TELEGRAM_CHAT_ID", "0"))
-
+# ── Storage ───────────────────────────────────────────────────────────────────
 STORAGE_BUCKET = "tb-attachments"
 
-# Stati conversazione
+# ── Stati conversazione ───────────────────────────────────────────────────────
 IDLE          = "idle"
 TASK_PROJECT  = "task_project"
 TASK_TITLE    = "task_title"
