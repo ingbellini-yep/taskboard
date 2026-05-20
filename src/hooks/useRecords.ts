@@ -107,6 +107,20 @@ export async function deleteRecord(recId: string): Promise<void> {
   await supabase.from('tb_records').delete().eq('rec_id', recId)
 }
 
+export async function archiveRecord(recId: string): Promise<void> {
+  await supabase
+    .from('tb_records')
+    .update({ rec_status: 'archiviato' })
+    .eq('rec_id', recId)
+}
+
+export async function restoreRecord(recId: string): Promise<void> {
+  await supabase
+    .from('tb_records')
+    .update({ rec_status: 'aperto' })
+    .eq('rec_id', recId)
+}
+
 export async function assignToProject(recId: string, prjId: string, prjCode: string, wsId: string, wsCode: string): Promise<void> {
   const code = await generateRecordCode(prjId, 'T')
   await supabase

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { TbRecord } from '../types'
 import { kindLabel, dueDateLabel, isOverdue, formatDateTime } from '../utils/format'
-import { closeRecord, deleteRecord } from '../hooks/useRecords'
+import { closeRecord, deleteRecord, archiveRecord } from '../hooks/useRecords'
 import { CloseTaskModal } from './CloseTaskModal'
 import { DeleteMemoModal } from './DeleteMemoModal'
 
@@ -41,6 +41,10 @@ export function RecordTile({ record: r }: Props) {
   async function handleConfirmDelete() {
     await deleteRecord(r.rec_id)
     setShowDeleteModal(false)
+  }
+
+  async function handleArchive() {
+    await archiveRecord(r.rec_id)
   }
 
   const overdue = isOverdue(r.rec_due_date)
@@ -122,15 +126,24 @@ export function RecordTile({ record: r }: Props) {
             </button>
           )}
 
-          {/* Memo: delete button */}
+          {/* Memo: archive + delete buttons */}
           {r.rec_kind === 'M' && (
-            <button
-              onClick={() => setShowDeleteModal(true)}
-              className="ml-2 shrink-0 w-8 h-8 flex items-center justify-center rounded border border-gray-200 bg-gray-50 hover:bg-red-50 hover:border-red-300 hover:text-red-600 text-gray-400 text-sm transition-colors"
-              title="Elimina memo"
-            >
-              🗑
-            </button>
+            <div className="ml-2 flex gap-1 shrink-0">
+              <button
+                onClick={handleArchive}
+                className="w-8 h-8 flex items-center justify-center rounded border border-gray-200 bg-gray-50 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 text-gray-400 text-sm transition-colors"
+                title="Archivia memo"
+              >
+                📁
+              </button>
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                className="w-8 h-8 flex items-center justify-center rounded border border-gray-200 bg-gray-50 hover:bg-red-50 hover:border-red-300 hover:text-red-600 text-gray-400 text-sm transition-colors"
+                title="Elimina memo"
+              >
+                🗑
+              </button>
+            </div>
           )}
           {/* EV: nessun bottone */}
         </div>

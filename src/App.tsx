@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { BoardView } from './components/BoardView'
 import { CompletatiView } from './components/CompletatiView'
+import { ArchiviatiView } from './components/ArchiviatiView'
 import { OreView } from './components/OreView'
 import { useStats } from './hooks/useStats'
 
-type Tab = 'aperti' | 'completati' | 'ore'
+type Tab = 'aperti' | 'completati' | 'archiviati' | 'ore'
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('aperti')
@@ -67,6 +68,9 @@ export default function App() {
           <TabButton active={tab === 'completati'} onClick={() => setTab('completati')}>
             Completati
           </TabButton>
+          <TabButton active={tab === 'archiviati'} onClick={() => setTab('archiviati')}>
+            📁 Archiviati
+          </TabButton>
           <TabButton active={tab === 'ore'} onClick={() => setTab('ore')}>
             Ore
           </TabButton>
@@ -77,6 +81,7 @@ export default function App() {
       <main className="max-w-7xl mx-auto px-5 py-6">
         {tab === 'aperti' && <BoardView />}
         {tab === 'completati' && <CompletatiView />}
+        {tab === 'archiviati' && <ArchiviatiView />}
         {tab === 'ore' && <OreView />}
       </main>
     </div>
