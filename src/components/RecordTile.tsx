@@ -1,16 +1,32 @@
 import { useState } from 'react'
 import type { TbRecord } from '../types'
-import {
-  kindLabel, kindBadgeColor,
-  priorityLabel, priorityBadgeColor,
-  dueDateLabel, isOverdue, formatDateTime,
-} from '../utils/format'
+import { kindLabel, dueDateLabel, isOverdue, formatDateTime } from '../utils/format'
 import { closeRecord, deleteRecord } from '../hooks/useRecords'
 import { CloseTaskModal } from './CloseTaskModal'
 import { DeleteMemoModal } from './DeleteMemoModal'
 
 interface Props {
   record: TbRecord
+}
+
+function kindBadgeClass(kind: string): string {
+  if (kind === 'T') return 'bg-blue-600 text-white text-xs px-1.5 py-0.5 rounded font-medium'
+  if (kind === 'M') return 'bg-gray-500 text-white text-xs px-1.5 py-0.5 rounded font-medium'
+  return 'bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded font-medium'
+}
+
+function priorityBadgeClass(r: TbRecord): string {
+  if (r.rec_status === 'sospeso') return 'bg-yellow-50 text-yellow-700 border border-yellow-200 text-xs px-2 py-0.5 rounded-full'
+  if (r.rec_priority === 1) return 'bg-red-50 text-red-700 border border-red-200 text-xs px-2 py-0.5 rounded-full'
+  if (r.rec_priority === 3) return 'bg-gray-100 text-gray-500 border border-gray-200 text-xs px-2 py-0.5 rounded-full'
+  return 'bg-blue-50 text-blue-700 border border-blue-200 text-xs px-2 py-0.5 rounded-full'
+}
+
+function priorityBadgeLabel(r: TbRecord): string {
+  if (r.rec_status === 'sospeso') return 'sospeso'
+  if (r.rec_priority === 1) return 'alta'
+  if (r.rec_priority === 3) return 'bassa'
+  return 'normale'
 }
 
 export function RecordTile({ record: r }: Props) {
@@ -32,109 +48,110 @@ export function RecordTile({ record: r }: Props) {
 
   return (
     <>
-    <div
-      className="bg-white rounded-xl border border-gray-200 hover:border-gray-300 p-4 flex flex-col gap-3 relative shadow-sm hover:shadow-md transition-all duration-150"
-      style={{ borderLeftColor: wsColor, borderLeftWidth: 3 }}
-    >
-      {/* Header row */}
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-          {r.rec_code && (
-            <span className="font-mono text-xs text-gray-400 shrink-0">{r.rec_code}</span>
-          )}
-          {r.rec_flagged && <span className="text-yellow-500 text-sm">⭐</span>}
+      <div
+        className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col gap-2 shadow-sm hover:shadow-md hover:border-gray-300 transition-all duration-150"
+        style={{ borderLeftColor: wsColor, borderLeftWidth: 3 }}
+      >
+        {/* Codice record */}
+        {r.rec_code && (
+          <span className="font-mono text-xs" style={{ color: '#9E9E9E' }}>{r.rec_code}</span>
+        )}
+
+        {/* Titolo + badge tipo inline */}
+        <div className="flex items-start gap-2 flex-wrap">
+          <span className="font-semibold text-sm leading-snug flex-1 min-w-0" style={{ color: '#212121' }}>
+            {r.rec_flagged && <span className="text-yellow-500 mr-1">⭐</span>}
+            {r.rec_title}
+          </span>
+          <span className={`shrink-0 ${kindBadgeClass(r.rec_kind)}`}>{kindLabel(r.rec_kind)}</span>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${kindBadgeColor(r.rec_kind)}`}>
-            {kindLabel(r.rec_kind)}
-          </span>
-          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${priorityBadgeColor(r.rec_priority)}`}>
-            {priorityLabel(r.rec_priority)}
-          </span>
+
+        {/* Progetto */}
+        {r.prj_label && (
+          <p className="text-xs truncate" style={{ color: '#616161' }}>
+            {r.ws_icon && <span className="mr-1">{r.ws_icon}</span>}
+            {r.prj_label}
+            {r.rec_sub_label && <span style={{ color: '#9E9E9E' }}> — {r.rec_sub_label}</span>}
+          </p>
+        )}
+
+        {/* Badge priorità */}
+        <div>
+          <span className={priorityBadgeClass(r)}>{priorityBadgeLabel(r)}</span>
+        </div>
+
+        {/* Body preview */}
+        {r.rec_body && (
+          <p className="text-xs line-clamp-2 leading-relaxed" style={{ color: '#616161' }}>{r.rec_body}</p>
+        )}
+
+        {/* Event times */}
+        {r.rec_kind === 'EV' && r.rec_event_start && (
+          <p className="text-xs text-orange-500">
+            📅 {formatDateTime(r.rec_event_start)}
+            {r.rec_event_end && <> → {formatDateTime(r.rec_event_end)}</>}
+          </p>
+        )}
+
+        {/* Footer: date + action button */}
+        <div className="flex items-center justify-between mt-auto pt-1">
+          <div className="flex flex-wrap gap-1">
+            {r.rec_due_date && r.rec_kind !== 'EV' && (
+              <span
+                className="text-xs font-medium"
+                style={{ color: overdue ? '#C62828' : '#616161' }}
+              >
+                ⏰ {dueDateLabel(r.rec_due_date)}
+              </span>
+            )}
+            {r.rec_tags?.map(tag => (
+              <span key={tag} className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
+                #{tag}
+              </span>
+            ))}
+          </div>
+
+          {/* Task: close button */}
+          {r.rec_kind === 'T' && (
+            <button
+              onClick={() => setShowCloseModal(true)}
+              className="ml-2 shrink-0 flex items-center justify-center rounded border border-gray-200 bg-gray-50 hover:bg-green-50 hover:border-green-300 hover:text-green-700 text-gray-500 text-sm transition-colors"
+              style={{ width: 28, height: 28 }}
+              title="Chiudi task"
+            >
+              ✓
+            </button>
+          )}
+
+          {/* Memo: delete button */}
+          {r.rec_kind === 'M' && (
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="ml-2 shrink-0 flex items-center justify-center rounded border border-gray-200 bg-gray-50 hover:bg-red-50 hover:border-red-300 hover:text-red-600 text-gray-400 text-sm transition-colors"
+              style={{ width: 28, height: 28 }}
+              title="Elimina memo"
+            >
+              🗑
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Title */}
-      <p className="text-gray-900 font-semibold leading-snug text-sm">{r.rec_title}</p>
-
-      {/* Project / sub-label */}
-      {r.prj_label && (
-        <p className="text-xs text-gray-500 truncate">
-          {r.ws_icon && <span className="mr-1">{r.ws_icon}</span>}
-          {r.prj_label}
-          {r.rec_sub_label && <span className="text-gray-400"> — {r.rec_sub_label}</span>}
-        </p>
+      {showCloseModal && (
+        <CloseTaskModal
+          recCode={r.rec_code ?? null}
+          recTitle={r.rec_title}
+          onConfirm={handleConfirmClose}
+          onCancel={() => setShowCloseModal(false)}
+        />
       )}
-
-      {/* Body preview */}
-      {r.rec_body && (
-        <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{r.rec_body}</p>
+      {showDeleteModal && (
+        <DeleteMemoModal
+          recTitle={r.rec_title}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setShowDeleteModal(false)}
+        />
       )}
-
-      {/* Event times */}
-      {r.rec_kind === 'EV' && r.rec_event_start && (
-        <p className="text-xs text-orange-500">
-          📅 {formatDateTime(r.rec_event_start)}
-          {r.rec_event_end && <> → {formatDateTime(r.rec_event_end)}</>}
-        </p>
-      )}
-
-      {/* Footer */}
-      <div className="flex items-end justify-between mt-auto pt-1">
-        <div className="flex flex-wrap gap-1">
-          {/* Due date */}
-          {r.rec_due_date && r.rec_kind !== 'EV' && (
-            <span className={`text-xs font-medium ${overdue ? 'text-red-500' : 'text-gray-500'}`}>
-              ⏰ {dueDateLabel(r.rec_due_date)}
-            </span>
-          )}
-          {/* Tags */}
-          {r.rec_tags?.map(tag => (
-            <span key={tag} className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
-              #{tag}
-            </span>
-          ))}
-        </div>
-
-        {/* Close button — Task */}
-        {r.rec_kind === 'T' && (
-          <button
-            onClick={() => setShowCloseModal(true)}
-            className="ml-2 shrink-0 w-8 h-8 rounded-lg bg-gray-100 hover:bg-green-500 text-gray-500 hover:text-white flex items-center justify-center transition-colors"
-            title="Chiudi task"
-          >
-            <span className="text-sm font-bold">✓</span>
-          </button>
-        )}
-
-        {/* Delete button — Memo */}
-        {r.rec_kind === 'M' && (
-          <button
-            onClick={() => setShowDeleteModal(true)}
-            className="ml-2 shrink-0 w-8 h-8 rounded-lg bg-gray-100 hover:bg-red-500 text-gray-400 hover:text-white flex items-center justify-center transition-colors"
-            title="Elimina memo"
-          >
-            <span className="text-sm">🗑</span>
-          </button>
-        )}
-      </div>
-    </div>
-
-    {showCloseModal && (
-      <CloseTaskModal
-        recCode={r.rec_code ?? null}
-        recTitle={r.rec_title}
-        onConfirm={handleConfirmClose}
-        onCancel={() => setShowCloseModal(false)}
-      />
-    )}
-    {showDeleteModal && (
-      <DeleteMemoModal
-        recTitle={r.rec_title}
-        onConfirm={handleConfirmDelete}
-        onCancel={() => setShowDeleteModal(false)}
-      />
-    )}
-  </>
+    </>
   )
 }
