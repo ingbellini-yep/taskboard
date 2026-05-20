@@ -85,7 +85,7 @@ export function CloseTaskModal({ recCode, recTitle, onConfirm, onCancel }: Props
           <button
             onClick={handleConfirm}
             disabled={saving}
-            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 flex items-center gap-1.5"
+            className="px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-medium rounded transition-colors disabled:opacity-50 flex items-center gap-1.5"
           >
             {saving ? (
               <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
