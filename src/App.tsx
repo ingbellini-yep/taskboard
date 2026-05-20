@@ -62,7 +62,7 @@ export default function App() {
 
       {/* Tabs */}
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-5 flex">
+        <div className="max-w-7xl mx-auto px-5 flex overflow-x-auto">
           <TabButton active={tab === 'aperti'} onClick={() => setTab('aperti')}>
             Aperti ({stats.totali})
           </TabButton>
@@ -110,7 +110,7 @@ function TabButton({ active, onClick, children }: {
   return (
     <button
       onClick={onClick}
-      className={`px-5 py-3 text-sm font-medium transition-all border-b-2 ${
+      className={`px-4 py-3 text-sm font-medium transition-all border-b-2 whitespace-nowrap shrink-0 ${
         active
           ? 'border-blue-600 text-blue-700'
           : 'border-transparent text-gray-500 hover:text-gray-700'
