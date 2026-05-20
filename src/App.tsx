@@ -5,14 +5,12 @@ import { ArchiviatiView } from './components/ArchiviatiView'
 import { InboxTab } from './components/InboxTab'
 import { OreView } from './components/OreView'
 import { useStats } from './hooks/useStats'
-import { useInboxRecords } from './hooks/useRecords'
 
 type Tab = 'aperti' | 'inbox' | 'completati' | 'archiviati' | 'ore'
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('aperti')
   const stats = useStats()
-  const { records: inboxRecords } = useInboxRecords()
 
   const lastUpdated =
     stats.lastUpdated.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
@@ -69,7 +67,7 @@ export default function App() {
             Aperti ({stats.totali})
           </TabButton>
           <TabButton active={tab === 'inbox'} onClick={() => setTab('inbox')}>
-            📥 Inbox{inboxRecords.length > 0 && ` (${inboxRecords.length})`}
+            📥 Inbox{stats.inboxCount > 0 && ` (${stats.inboxCount})`}
           </TabButton>
           <TabButton active={tab === 'completati'} onClick={() => setTab('completati')}>
             Completati

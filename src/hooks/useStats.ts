@@ -12,13 +12,14 @@ export interface Stats {
   normale: number
   sospesi: number
   totali: number
+  inboxCount: number
   urgentRecords: UrgentRecord[]
   progettiAttivi: number
   lastUpdated: Date
 }
 
 const DEFAULT_STATS: Stats = {
-  urgenti: 0, alta: 0, normale: 0, sospesi: 0, totali: 0,
+  urgenti: 0, alta: 0, normale: 0, sospesi: 0, totali: 0, inboxCount: 0,
   urgentRecords: [], progettiAttivi: 0, lastUpdated: new Date(),
 }
 
@@ -26,7 +27,7 @@ export function useStats() {
   const [stats, setStats] = useState<Stats>(DEFAULT_STATS)
 
   const fetchStats = useCallback(async () => {
-    const [recordsRes, projectsRes] = await Promise.all([
+    const [recordsRes, projectsRes, inboxRes] = await Promise.all([
       supabase
         .from('tb_records')
         .select('rec_priority, rec_status, rec_code, rec_title')
@@ -36,10 +37,16 @@ export function useStats() {
         .from('tb_projects')
         .select('prj_id', { count: 'exact', head: true })
         .eq('prj_status', 'active'),
+      supabase
+        .from('tb_records')
+        .select('rec_id', { count: 'exact', head: true })
+        .eq('rec_bucket', 'inbox')
+        .not('rec_status', 'in', '("chiuso","archiviato")'),
     ])
 
     const recs = recordsRes.data ?? []
     const progettiAttivi = projectsRes.count ?? 0
+    const inboxCount = inboxRes.count ?? 0
 
     const urgentRecords = recs
       .filter(r => r.rec_priority === 1 && (r.rec_status === 'aperto' || r.rec_status === 'in_progress'))
@@ -51,6 +58,7 @@ export function useStats() {
       normale: recs.filter(r => r.rec_priority === 2).length,
       sospesi: recs.filter(r => r.rec_status === 'sospeso').length,
       totali: recs.length,
+      inboxCount,
       urgentRecords,
       progettiAttivi,
       lastUpdated: new Date(),
