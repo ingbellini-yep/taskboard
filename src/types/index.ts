@@ -49,6 +49,7 @@ export interface TbRecord {
   rec_created_at: string
   rec_updated_at: string
   rec_done_at: string | null
+  rec_hours: number | null
   // joined via view
   prj_label: string | null
   ws_label: string | null

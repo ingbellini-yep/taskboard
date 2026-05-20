@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { BoardView } from './components/BoardView'
+import { CompletatiView } from './components/CompletatiView'
 import { OreView } from './components/OreView'
 import { useStats } from './hooks/useStats'
 
@@ -75,7 +76,7 @@ export default function App() {
       {/* Content */}
       <main className="max-w-7xl mx-auto px-5 py-6">
         {tab === 'aperti' && <BoardView />}
-        {tab === 'completati' && <CompletatiPlaceholder />}
+        {tab === 'completati' && <CompletatiView />}
         {tab === 'ore' && <OreView />}
       </main>
     </div>
@@ -110,11 +111,3 @@ function TabButton({ active, onClick, children }: {
   )
 }
 
-function CompletatiPlaceholder() {
-  return (
-    <div className="text-center py-16 text-gray-400">
-      <div className="text-4xl mb-3">✅</div>
-      <p className="text-sm">Tab Completati — prossimamente</p>
-    </div>
-  )
-}
