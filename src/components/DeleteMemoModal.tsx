@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react'
 
 interface Props {
   recTitle: string
+  recordType?: string
   onConfirm: () => void
   onCancel: () => void
 }
 
-export function DeleteMemoModal({ recTitle, onConfirm, onCancel }: Props) {
+export function DeleteMemoModal({ recTitle, recordType = 'Memo', onConfirm, onCancel }: Props) {
   const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
@@ -27,7 +28,7 @@ export function DeleteMemoModal({ recTitle, onConfirm, onCancel }: Props) {
     >
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <span className="font-semibold text-gray-900">🗑 Elimina Memo</span>
+          <span className="font-semibold text-gray-900">🗑 Elimina {recordType}</span>
           <button
             onClick={onCancel}
             className="text-gray-400 hover:text-gray-600 text-lg leading-none transition-colors"
@@ -39,7 +40,7 @@ export function DeleteMemoModal({ recTitle, onConfirm, onCancel }: Props) {
         <div className="px-5 py-5 flex flex-col gap-3">
           <p className="text-gray-700 text-sm leading-snug line-clamp-2">{recTitle}</p>
           <p className="text-xs text-red-600 font-medium">
-            Operazione irreversibile. Il memo verrà eliminato definitivamente.
+            Operazione irreversibile. {recordType === 'Task' ? 'Il task' : 'Il memo'} verrà eliminato definitivamente.
           </p>
         </div>
 

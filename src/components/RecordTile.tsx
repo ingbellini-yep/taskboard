@@ -4,6 +4,7 @@ import { kindLabel, dueDateLabel, isOverdue, formatDateTime } from '../utils/for
 import { closeRecord, deleteRecord, archiveRecord } from '../hooks/useRecords'
 import { CloseTaskModal } from './CloseTaskModal'
 import { DeleteMemoModal } from './DeleteMemoModal'
+import { ReassignTaskModal } from './ReassignTaskModal'
 
 interface Props {
   record: TbRecord
@@ -32,6 +33,7 @@ function priorityBadgeLabel(r: TbRecord): string {
 export function RecordTile({ record: r }: Props) {
   const [showCloseModal, setShowCloseModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showReassignModal, setShowReassignModal] = useState(false)
 
   async function handleConfirmClose(hours: number | null) {
     await closeRecord(r.rec_id, hours)
@@ -115,15 +117,31 @@ export function RecordTile({ record: r }: Props) {
             ))}
           </div>
 
-          {/* Task: close button */}
+          {/* Task: close + reassign + delete buttons */}
           {r.rec_kind === 'T' && (
-            <button
-              onClick={() => setShowCloseModal(true)}
-              className="ml-2 shrink-0 w-8 h-8 flex items-center justify-center rounded border border-gray-200 bg-gray-50 hover:bg-green-50 hover:border-green-300 hover:text-green-600 text-gray-400 text-sm transition-colors"
-              title="Chiudi task"
-            >
-              ✓
-            </button>
+            <div className="ml-2 flex gap-1 shrink-0">
+              <button
+                onClick={() => setShowCloseModal(true)}
+                className="w-8 h-8 flex items-center justify-center rounded border border-gray-200 bg-gray-50 hover:bg-green-50 hover:border-green-300 hover:text-green-600 text-gray-400 text-sm transition-colors"
+                title="Chiudi task"
+              >
+                ✓
+              </button>
+              <button
+                onClick={() => setShowReassignModal(true)}
+                className="w-8 h-8 flex items-center justify-center rounded border border-gray-200 bg-gray-50 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 text-gray-400 text-sm transition-colors"
+                title="Riattribuisci task"
+              >
+                ✏️
+              </button>
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                className="w-8 h-8 flex items-center justify-center rounded border border-gray-200 bg-gray-50 hover:bg-red-50 hover:border-red-300 hover:text-red-600 text-gray-400 text-sm transition-colors"
+                title="Elimina task"
+              >
+                🗑
+              </button>
+            </div>
           )}
 
           {/* Memo: archive + delete buttons */}
@@ -160,8 +178,18 @@ export function RecordTile({ record: r }: Props) {
       {showDeleteModal && (
         <DeleteMemoModal
           recTitle={r.rec_title}
+          recordType={r.rec_kind === 'T' ? 'Task' : 'Memo'}
           onConfirm={handleConfirmDelete}
           onCancel={() => setShowDeleteModal(false)}
+        />
+      )}
+      {showReassignModal && (
+        <ReassignTaskModal
+          recId={r.rec_id}
+          recTitle={r.rec_title}
+          recCode={r.rec_code ?? null}
+          onDone={() => setShowReassignModal(false)}
+          onCancel={() => setShowReassignModal(false)}
         />
       )}
     </>
