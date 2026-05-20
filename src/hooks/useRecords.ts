@@ -92,11 +92,19 @@ export function useInboxRecords() {
   return { records, loading, refetch: fetch }
 }
 
-export async function closeRecord(recId: string): Promise<void> {
+export async function closeRecord(recId: string, hours: number | null = null): Promise<void> {
   await supabase
     .from('tb_records')
-    .update({ rec_status: 'chiuso' })
+    .update({
+      rec_status: 'chiuso',
+      rec_done_at: new Date().toISOString(),
+      rec_hours: hours,
+    })
     .eq('rec_id', recId)
+}
+
+export async function deleteRecord(recId: string): Promise<void> {
+  await supabase.from('tb_records').delete().eq('rec_id', recId)
 }
 
 export async function assignToProject(recId: string, prjId: string, prjCode: string, wsId: string, wsCode: string): Promise<void> {

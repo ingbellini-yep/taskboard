@@ -62,13 +62,14 @@ export function BoardView() {
     <div className="flex flex-col gap-4">
       {/* Search bar */}
       <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">🔍</span>
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
         <input
           type="search"
           placeholder="Cerca per titolo, note, codice, progetto…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="w-full bg-gray-800 text-gray-200 placeholder-gray-500 rounded-xl border border-gray-700 pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition-colors"
+          className="w-full bg-white text-gray-900 placeholder-gray-400 rounded-xl border border-gray-200 pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 transition-colors"
+          style={{ borderColor: '#E2E8F0' }}
         />
       </div>
 
@@ -88,7 +89,7 @@ export function BoardView() {
       {/* Filter + group bar */}
       <div className="flex flex-wrap items-center gap-3">
         {/* Kind filter */}
-        <div className="flex rounded-lg overflow-hidden border border-gray-700 text-xs">
+        <div className="flex rounded-lg overflow-hidden border border-gray-200 text-xs bg-white">
           {KIND_OPTIONS.map(o => (
             <button
               key={o.value}
@@ -96,7 +97,7 @@ export function BoardView() {
               className={`px-3 py-1.5 font-medium transition-colors ${
                 filterKind === o.value
                   ? 'bg-blue-600 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:text-gray-200'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
               }`}
             >
               {o.label}
@@ -105,7 +106,7 @@ export function BoardView() {
         </div>
 
         {/* Status filter */}
-        <div className="flex rounded-lg overflow-hidden border border-gray-700 text-xs">
+        <div className="flex rounded-lg overflow-hidden border border-gray-200 text-xs bg-white">
           {STATUS_OPTIONS.map(o => (
             <button
               key={o.value}
@@ -113,7 +114,7 @@ export function BoardView() {
               className={`px-3 py-1.5 font-medium transition-colors ${
                 filterStatus === o.value
                   ? 'bg-purple-600 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:text-gray-200'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
               }`}
             >
               {o.label}
@@ -122,17 +123,17 @@ export function BoardView() {
         </div>
 
         {/* Group by */}
-        <div className="ml-auto flex items-center gap-2 text-xs text-gray-400">
+        <div className="ml-auto flex items-center gap-2 text-xs text-gray-500">
           <span>Raggruppa:</span>
-          <div className="flex rounded-lg overflow-hidden border border-gray-700">
+          <div className="flex rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
             {GROUP_OPTIONS.map(o => (
               <button
                 key={o.value}
                 onClick={() => setGroupBy(o.value)}
-                className={`px-3 py-1.5 font-medium transition-colors ${
+                className={`px-3 py-1.5 font-medium transition-all ${
                   groupBy === o.value
-                    ? 'bg-gray-600 text-white'
-                    : 'bg-gray-800 text-gray-400 hover:text-gray-200'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
                 {o.label}
@@ -157,10 +158,10 @@ export function BoardView() {
         <div className="flex flex-col gap-8">
           {groups.map(group => (
             <section key={group.key}>
-              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 pb-2 border-b border-gray-200 flex items-center gap-2">
                 {group.icon && <span>{group.icon}</span>}
                 {group.label}
-                <span className="bg-gray-700 text-gray-400 rounded-full px-2 py-0.5 normal-case tracking-normal font-medium">
+                <span className="bg-gray-200 text-gray-600 rounded-full px-2 py-0.5 normal-case tracking-normal font-medium">
                   {group.records.length}
                 </span>
               </h2>
@@ -259,7 +260,7 @@ function LoadingGrid() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="bg-gray-800 rounded-xl border border-gray-700 p-4 h-36 animate-pulse" />
+        <div key={i} className="bg-gray-100 rounded-xl border border-gray-200 p-4 h-36 animate-pulse" />
       ))}
     </div>
   )
@@ -267,7 +268,7 @@ function LoadingGrid() {
 
 function EmptyState({ hasSearch }: { hasSearch: boolean }) {
   return (
-    <div className="text-center py-16 text-gray-500">
+    <div className="text-center py-16 text-gray-400">
       <div className="text-4xl mb-3">{hasSearch ? '🔍' : '✅'}</div>
       <p className="text-sm">
         {hasSearch ? 'Nessun record trovato' : 'Nessun record aperto'}
@@ -278,7 +279,7 @@ function EmptyState({ hasSearch }: { hasSearch: boolean }) {
 
 function ErrorState({ message }: { message: string }) {
   return (
-    <div className="text-center py-12 text-red-400">
+    <div className="text-center py-12 text-red-500">
       <div className="text-3xl mb-2">⚠️</div>
       <p className="text-sm">{message}</p>
     </div>

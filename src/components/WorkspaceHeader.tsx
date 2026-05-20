@@ -18,7 +18,7 @@ export function WorkspaceHeader({ workspace: ws, records, filterWs, onFilterClic
       className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-all ${
         active
           ? 'text-white border-transparent'
-          : 'text-gray-400 border-gray-700 hover:border-gray-500'
+          : 'text-gray-600 border-gray-200 hover:border-gray-400 bg-white'
       }`}
       style={active ? { backgroundColor: ws.ws_color, borderColor: ws.ws_color } : {}}
     >
@@ -28,7 +28,7 @@ export function WorkspaceHeader({ workspace: ws, records, filterWs, onFilterClic
         <span
           className="text-xs px-1.5 py-0.5 rounded-full font-bold"
           style={{
-            backgroundColor: active ? 'rgba(255,255,255,0.25)' : ws.ws_color + '33',
+            backgroundColor: active ? 'rgba(255,255,255,0.25)' : ws.ws_color + '22',
             color: active ? 'white' : ws.ws_color,
           }}
         >

@@ -44,22 +44,22 @@ function InboxCard({ record: r, projects }: {
   }
 
   return (
-    <div className="bg-gray-800 rounded-xl border border-gray-700 p-4 flex flex-col gap-3">
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-col gap-3">
       <div className="flex items-center gap-2">
         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${kindBadgeColor(r.rec_kind)}`}>
           {kindLabel(r.rec_kind)}
         </span>
-        <span className="text-xs text-gray-500">{formatDate(r.rec_created_at)}</span>
+        <span className="text-xs text-gray-400">{formatDate(r.rec_created_at)}</span>
       </div>
-      <p className="text-white text-sm font-medium">{r.rec_title}</p>
-      {r.rec_body && <p className="text-xs text-gray-400 line-clamp-2">{r.rec_body}</p>}
+      <p className="text-gray-900 text-sm font-semibold">{r.rec_title}</p>
+      {r.rec_body && <p className="text-xs text-gray-500 line-clamp-2">{r.rec_body}</p>}
 
       <div className="flex flex-col sm:flex-row gap-2 pt-1">
         <select
           value={selectedPrjId}
           onChange={e => setSelectedPrjId(e.target.value)}
           disabled={busy}
-          className="flex-1 bg-gray-700 text-gray-200 text-sm rounded-lg px-3 py-2 border border-gray-600 focus:outline-none focus:border-blue-500"
+          className="flex-1 bg-white text-gray-700 text-sm rounded-lg px-3 py-2 border border-gray-200 focus:outline-none focus:border-blue-500"
         >
           <option value="">Seleziona progetto…</option>
           {projects.map(p => (
@@ -71,14 +71,14 @@ function InboxCard({ record: r, projects }: {
         <button
           onClick={handleAssign}
           disabled={!selectedPrjId || busy}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-medium rounded-lg transition-colors"
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white text-sm font-medium rounded-lg transition-colors"
         >
           Assegna
         </button>
         <button
           onClick={handleSmallTasks}
           disabled={busy}
-          className="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm rounded-lg transition-colors"
+          className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm rounded-lg transition-colors"
           title="Sposta a Small Tasks"
         >
           ⚡ Small Tasks
@@ -98,7 +98,7 @@ function LoadingState() {
 
 function EmptyState() {
   return (
-    <div className="text-center py-16 text-gray-500">
+    <div className="text-center py-16 text-gray-400">
       <div className="text-4xl mb-3">📥</div>
       <p className="text-sm">Inbox vuota</p>
     </div>
