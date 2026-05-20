@@ -67,8 +67,8 @@ export function useOreReport() {
       const prjMap = new Map<string, OreProgetto>()
 
       for (const r of data ?? []) {
-        const wsRaw = r.tb_workspaces as { ws_label: string; ws_color: string; ws_icon: string; ws_sort_order: number } | null
-        const prjRaw = r.tb_projects as { prj_label: string } | null
+        const wsRaw = r.tb_workspaces as unknown as { ws_label: string; ws_color: string; ws_icon: string; ws_sort_order: number } | null
+        const prjRaw = r.tb_projects as unknown as { prj_label: string } | null
 
         if (!r.rec_ws_code || !r.rec_prj_id || !r.rec_prj_code) continue
         const hours = Number(r.rec_hours)
