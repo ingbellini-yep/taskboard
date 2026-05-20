@@ -115,8 +115,7 @@ export function RecordTile({ record: r }: Props) {
           {r.rec_kind === 'T' && (
             <button
               onClick={() => setShowCloseModal(true)}
-              className="ml-2 shrink-0 flex items-center justify-center rounded border border-gray-200 bg-gray-50 hover:bg-green-50 hover:border-green-300 hover:text-green-700 text-gray-500 text-sm transition-colors"
-              style={{ width: 28, height: 28 }}
+              className="ml-2 shrink-0 w-8 h-8 flex items-center justify-center rounded border border-gray-200 bg-gray-50 hover:bg-green-50 hover:border-green-300 hover:text-green-600 text-gray-400 text-sm transition-colors"
               title="Chiudi task"
             >
               ✓
@@ -127,13 +126,13 @@ export function RecordTile({ record: r }: Props) {
           {r.rec_kind === 'M' && (
             <button
               onClick={() => setShowDeleteModal(true)}
-              className="ml-2 shrink-0 flex items-center justify-center rounded border border-gray-200 bg-gray-50 hover:bg-red-50 hover:border-red-300 hover:text-red-600 text-gray-400 text-sm transition-colors"
-              style={{ width: 28, height: 28 }}
+              className="ml-2 shrink-0 w-8 h-8 flex items-center justify-center rounded border border-gray-200 bg-gray-50 hover:bg-red-50 hover:border-red-300 hover:text-red-600 text-gray-400 text-sm transition-colors"
               title="Elimina memo"
             >
               🗑
             </button>
           )}
+          {/* EV: nessun bottone */}
         </div>
       </div>
 

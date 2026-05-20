@@ -27,19 +27,17 @@ export function CloseTaskModal({ recCode, recTitle, onConfirm, onCancel }: Props
   }
 
   return (
-    /* Overlay */
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       onClick={e => { if (e.target === e.currentTarget) onCancel() }}
     >
-      {/* Modal */}
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <span className="font-semibold text-gray-900">✓ Chiudi Task</span>
           <button
             onClick={onCancel}
-            className="text-gray-400 hover:text-gray-600 text-lg leading-none transition-colors"
+            className="text-gray-400 hover:text-gray-600 text-xl leading-none transition-colors"
           >
             ×
           </button>
@@ -47,29 +45,29 @@ export function CloseTaskModal({ recCode, recTitle, onConfirm, onCancel }: Props
 
         {/* Body */}
         <div className="px-5 py-5 flex flex-col gap-4">
+          {/* Codice + titolo */}
           {recCode && (
-            <p className="font-mono text-xs text-gray-400">{recCode}</p>
+            <p className="font-mono text-sm text-gray-500">{recCode}</p>
           )}
-          <p className="text-gray-900 font-medium text-sm leading-snug">{recTitle}</p>
+          <p className="font-semibold text-gray-900 text-sm leading-snug">{recTitle}</p>
 
+          {/* Ore lavorate */}
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-gray-600">
               Ore lavorate <span className="text-gray-400 font-normal">(opzionale)</span>
             </label>
-            <div className="flex items-center gap-2">
-              <input
-                ref={inputRef}
-                type="number"
-                step="0.5"
-                min="0"
-                max="999"
-                placeholder="0"
-                value={hoursValue}
-                onChange={e => setHoursValue(e.target.value)}
-                className="w-24 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-blue-500 transition-colors"
-              />
-              <span className="text-sm text-gray-500">h &nbsp;·&nbsp; es. 1.5 = 1h 30min</span>
-            </div>
+            <input
+              ref={inputRef}
+              type="number"
+              step="0.5"
+              min="0"
+              max="999"
+              placeholder="0"
+              value={hoursValue}
+              onChange={e => setHoursValue(e.target.value)}
+              className="w-full border border-gray-200 rounded px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-blue-500 transition-colors"
+            />
+            <span className="text-xs text-gray-400">es. 1.5 = 1 ora e 30 minuti</span>
           </div>
         </div>
 
@@ -78,7 +76,7 @@ export function CloseTaskModal({ recCode, recTitle, onConfirm, onCancel }: Props
           <button
             onClick={onCancel}
             disabled={saving}
-            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 font-medium transition-colors disabled:opacity-50"
+            className="border border-gray-200 bg-white px-4 py-2 rounded text-sm text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
           >
             Annulla
           </button>
@@ -90,7 +88,7 @@ export function CloseTaskModal({ recCode, recTitle, onConfirm, onCancel }: Props
             {saving ? (
               <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
             ) : (
-              <>Chiudi Task <span className="font-bold">✓</span></>
+              <>✓ Chiudi Task</>
             )}
           </button>
         </div>
