@@ -2,14 +2,17 @@ import { useState } from 'react'
 import { BoardView } from './components/BoardView'
 import { CompletatiView } from './components/CompletatiView'
 import { ArchiviatiView } from './components/ArchiviatiView'
+import { InboxTab } from './components/InboxTab'
 import { OreView } from './components/OreView'
 import { useStats } from './hooks/useStats'
+import { useInboxRecords } from './hooks/useRecords'
 
-type Tab = 'aperti' | 'completati' | 'archiviati' | 'ore'
+type Tab = 'aperti' | 'inbox' | 'completati' | 'archiviati' | 'ore'
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('aperti')
   const stats = useStats()
+  const { records: inboxRecords } = useInboxRecords()
 
   const lastUpdated =
     stats.lastUpdated.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
@@ -65,6 +68,9 @@ export default function App() {
           <TabButton active={tab === 'aperti'} onClick={() => setTab('aperti')}>
             Aperti ({stats.totali})
           </TabButton>
+          <TabButton active={tab === 'inbox'} onClick={() => setTab('inbox')}>
+            📥 Inbox{inboxRecords.length > 0 && ` (${inboxRecords.length})`}
+          </TabButton>
           <TabButton active={tab === 'completati'} onClick={() => setTab('completati')}>
             Completati
           </TabButton>
@@ -80,6 +86,7 @@ export default function App() {
       {/* Content */}
       <main className="max-w-7xl mx-auto px-5 py-6">
         {tab === 'aperti' && <BoardView />}
+        {tab === 'inbox' && <InboxTab />}
         {tab === 'completati' && <CompletatiView />}
         {tab === 'archiviati' && <ArchiviatiView />}
         {tab === 'ore' && <OreView />}
