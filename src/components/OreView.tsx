@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import { useOreReport } from '../hooks/useOreReport'
-import type { OreProgetto, OreWorkspace } from '../hooks/useOreReport'
+import type { OreProgetto, OreTask, OreWorkspace } from '../hooks/useOreReport'
+
+type ViewMode = 'progetto' | 'task'
 
 export function OreView() {
   const { workspaces, summary, loading, error } = useOreReport()
+  const [mode, setMode] = useState<ViewMode>('progetto')
 
   if (loading) return <LoadingState />
   if (error) return <ErrorState message={error} />
@@ -17,13 +20,44 @@ export function OreView() {
         <SummaryCard value={String(summary.progetti_count)} label="Progetti" />
       </div>
 
+      {/* Toggle vista */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-gray-500 uppercase tracking-wide font-medium mr-1">Raggruppa per</span>
+        <button
+          onClick={() => setMode('progetto')}
+          className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+            mode === 'progetto'
+              ? 'bg-blue-700 text-white border-blue-700'
+              : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-700'
+          }`}
+        >
+          Progetto
+        </button>
+        <button
+          onClick={() => setMode('task')}
+          className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+            mode === 'task'
+              ? 'bg-blue-700 text-white border-blue-700'
+              : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-700'
+          }`}
+        >
+          Task
+        </button>
+      </div>
+
       {workspaces.length === 0 ? (
         <EmptyState />
       ) : (
         <div className="flex flex-col gap-4">
-          {workspaces.map(ws => (
-            <WorkspaceSection key={ws.ws_code} ws={ws} />
-          ))}
+          {mode === 'progetto' ? (
+            workspaces.map(ws => (
+              <WorkspaceSection key={ws.ws_code} ws={ws} />
+            ))
+          ) : (
+            workspaces.map(ws => (
+              <WorkspaceSectionTask key={ws.ws_code} ws={ws} />
+            ))
+          )}
 
           {/* Totale generale */}
           <div className="flex items-center justify-between pt-4 border-t-2 border-gray-300">
@@ -36,34 +70,13 @@ export function OreView() {
   )
 }
 
+/* ─────────────── Vista per PROGETTO ─────────────── */
+
 function WorkspaceSection({ ws }: { ws: OreWorkspace }) {
   return (
     <section>
-      {/* Workspace header: bg #F5F5F5, bordo-sx 4px ws_color */}
-      <div
-        className="flex items-center justify-between px-4 py-3 rounded-r-lg mb-0"
-        style={{
-          backgroundColor: '#F5F5F5',
-          borderLeft: `4px solid ${ws.ws_color}`,
-        }}
-      >
-        <div className="flex items-center gap-2">
-          <span
-            className="font-mono text-xs px-2 py-0.5 rounded font-bold text-white"
-            style={{ backgroundColor: ws.ws_color }}
-          >
-            [{ws.ws_code}]
-          </span>
-          {ws.ws_icon && <span>{ws.ws_icon}</span>}
-          <span className="font-bold text-gray-800 text-sm">{ws.ws_label}</span>
-        </div>
-        <span className="font-bold text-gray-700 text-sm">{formatOre(ws.ore_totali)}</span>
-      </div>
-
-      {/* Separatore */}
+      <WsHeader ws={ws} />
       <div className="border-b border-gray-200 mb-1" />
-
-      {/* Progetti */}
       <div className="flex flex-col">
         {ws.progetti.map(prj => (
           <ProgettoRow key={prj.prj_id} prj={prj} wsColor={ws.ws_color} />
@@ -78,11 +91,9 @@ function ProgettoRow({ prj, wsColor }: { prj: OreProgetto; wsColor: string }) {
 
   return (
     <div>
-      {/* Riga progetto */}
       <button
         onClick={() => setExpanded(e => !e)}
         className="w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors"
-        style={{ cursor: 'pointer' }}
         onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#F9FAFB')}
         onMouseLeave={e => (e.currentTarget.style.backgroundColor = '')}
       >
@@ -102,33 +113,117 @@ function ProgettoRow({ prj, wsColor }: { prj: OreProgetto; wsColor: string }) {
         </div>
       </button>
 
-      {/* Task espansi */}
       {expanded && (
         <div style={{ backgroundColor: '#FAFAFA' }}>
           {prj.tasks.map(t => (
-            <div
-              key={t.rec_id}
-              className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
-              style={{ paddingLeft: 32, paddingRight: 16 }}
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                {t.rec_code && (
-                  <span className="font-mono text-xs text-gray-400 shrink-0">{t.rec_code}</span>
-                )}
-                <span className="text-xs text-gray-600 truncate">{t.rec_title}</span>
-              </div>
-              <div className="flex items-center gap-3 shrink-0 ml-3">
-                <span className="text-xs font-medium text-gray-700">{formatOre(t.rec_hours)}</span>
-                {t.rec_done_at && (
-                  <span className="text-xs text-gray-400 w-10 text-right">
-                    {new Date(t.rec_done_at).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}
-                  </span>
-                )}
-              </div>
-            </div>
+            <TaskRow key={t.rec_id} task={t} showProject={false} />
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+/* ─────────────── Vista per TASK ─────────────── */
+
+function WorkspaceSectionTask({ ws }: { ws: OreWorkspace }) {
+  // Flatten all tasks in this workspace, sort by rec_done_at desc
+  const allTasks = ws.progetti
+    .flatMap(prj =>
+      prj.tasks.map(t => ({ ...t, prj_code: prj.prj_code, prj_label: prj.prj_label }))
+    )
+    .sort((a, b) => {
+      if (!a.rec_done_at && !b.rec_done_at) return 0
+      if (!a.rec_done_at) return 1
+      if (!b.rec_done_at) return -1
+      return new Date(b.rec_done_at).getTime() - new Date(a.rec_done_at).getTime()
+    })
+
+  if (allTasks.length === 0) return null
+
+  return (
+    <section>
+      <WsHeader ws={ws} />
+      <div className="border-b border-gray-200 mb-1" />
+      <div style={{ backgroundColor: '#FAFAFA' }}>
+        {allTasks.map(t => (
+          <TaskRowWithProject key={t.rec_id} task={t} />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function TaskRowWithProject({ task }: { task: OreTask & { prj_code: string; prj_label: string } }) {
+  return (
+    <div
+      className="flex items-center justify-between py-2.5 border-b border-gray-100 last:border-0"
+      style={{ paddingLeft: 16, paddingRight: 16 }}
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        {task.rec_code && (
+          <span className="font-mono text-xs text-gray-400 shrink-0">{task.rec_code}</span>
+        )}
+        <div className="flex flex-col min-w-0">
+          <span className="text-xs font-medium text-gray-700 truncate">{task.rec_title}</span>
+          <span className="text-xs text-gray-400">{task.prj_code} — {task.prj_label}</span>
+        </div>
+      </div>
+      <div className="flex items-center gap-3 shrink-0 ml-3">
+        <span className="text-xs font-bold text-gray-800">{formatOre(task.rec_hours)}</span>
+        {task.rec_done_at && (
+          <span className="text-xs text-gray-400 w-10 text-right">
+            {new Date(task.rec_done_at).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function TaskRow({ task }: { task: OreTask; showProject: boolean }) {
+  return (
+    <div
+      className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
+      style={{ paddingLeft: 32, paddingRight: 16 }}
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        {task.rec_code && (
+          <span className="font-mono text-xs text-gray-400 shrink-0">{task.rec_code}</span>
+        )}
+        <span className="text-xs text-gray-600 truncate">{task.rec_title}</span>
+      </div>
+      <div className="flex items-center gap-3 shrink-0 ml-3">
+        <span className="text-xs font-medium text-gray-700">{formatOre(task.rec_hours)}</span>
+        {task.rec_done_at && (
+          <span className="text-xs text-gray-400 w-10 text-right">
+            {new Date(task.rec_done_at).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ─────────────── Componenti condivisi ─────────────── */
+
+function WsHeader({ ws }: { ws: OreWorkspace }) {
+  return (
+    <div
+      className="flex items-center justify-between px-4 py-3 rounded-r-lg"
+      style={{ backgroundColor: '#F5F5F5', borderLeft: `4px solid ${ws.ws_color}` }}
+    >
+      <div className="flex items-center gap-2">
+        <span
+          className="font-mono text-xs px-2 py-0.5 rounded font-bold text-white"
+          style={{ backgroundColor: ws.ws_color }}
+        >
+          [{ws.ws_code}]
+        </span>
+        {ws.ws_icon && <span>{ws.ws_icon}</span>}
+        <span className="font-bold text-gray-800 text-sm">{ws.ws_label}</span>
+      </div>
+      <span className="font-bold text-gray-700 text-sm">{formatOre(ws.ore_totali)}</span>
     </div>
   )
 }
