@@ -1,41 +1,75 @@
 """
-Vercel Serverless Function — webhook Telegram.
-Vercel rileva la variabile 'app' (WSGI Flask) automaticamente.
+Vercel Serverless Function — webhook Telegram WSGI.
+Riceve aggiornamenti Telegram via POST /api/webhook
 """
 from __future__ import annotations
-
 import sys
 import os
+import json
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from flask import Flask, request, Response
 from bot.config import WEBHOOK_SECRET
 from bot.dispatcher import process_update
 
-app = Flask(__name__)
 
+def handler(environ, start_response):
+    method = environ.get("REQUEST_METHOD", "GET")
 
-@app.route("/", methods=["GET"])
-@app.route("/api/webhook", methods=["GET"])
-def webhook_get():
-    return "Taskboard webhook OK", 200
+    if method == "GET":
+        body = b"Taskboard webhook OK"
+        start_response("200 OK", [
+            ("Content-Type", "text/plain"),
+            ("Content-Length", str(len(body)))
+        ])
+        return [body]
 
+    if method == "POST":
+        # Verifica secret header
+        secret_header = environ.get("HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN", "")
+        if WEBHOOK_SECRET and secret_header != WEBHOOK_SECRET:
+            body = b"Forbidden"
+            start_response("403 Forbidden", [
+                ("Content-Type", "text/plain"),
+                ("Content-Length", str(len(body)))
+            ])
+            return [body]
 
-@app.route("/", methods=["POST"])
-@app.route("/api/webhook", methods=["POST"])
-def webhook_post():
-    secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
-    if WEBHOOK_SECRET and secret != WEBHOOK_SECRET:
-        return Response("Forbidden", status=403)
+        # Leggi body
+        try:
+            content_length = int(environ.get("CONTENT_LENGTH", 0))
+        except (ValueError, TypeError):
+            content_length = 0
 
-    data = request.get_json(silent=True)
-    if not data:
-        return Response("Bad Request", status=400)
+        raw = environ.get("wsgi.input", b"").read(content_length)
 
-    try:
-        process_update(data)
-    except Exception as exc:
-        print(f"[webhook] ERROR: {exc}", file=sys.stderr)
+        try:
+            update_data = json.loads(raw)
+        except json.JSONDecodeError:
+            body = b"Bad Request"
+            start_response("400 Bad Request", [
+                ("Content-Type", "text/plain"),
+                ("Content-Length", str(len(body)))
+            ])
+            return [body]
 
-    return "OK", 200
+        # Processa update
+        try:
+            process_update(update_data)
+        except Exception as exc:
+            print(f"[webhook] ERROR: {exc}", file=sys.stderr)
+
+        body = b"OK"
+        start_response("200 OK", [
+            ("Content-Type", "text/plain"),
+            ("Content-Length", str(len(body)))
+        ])
+        return [body]
+
+    # Metodo non supportato
+    body = b"Method Not Allowed"
+    start_response("405 Method Not Allowed", [
+        ("Content-Type", "text/plain"),
+        ("Content-Length", str(len(body)))
+    ])
+    return [body]
