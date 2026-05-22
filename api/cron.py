@@ -38,3 +38,7 @@ def cron_handler():
     except Exception as exc:
         print(f"[cron] ERROR: {exc}", file=sys.stderr)
         return Response(str(exc), status=500)
+
+msg = daily_digest(now, events, tasks, alerts)
+        print(f"[cron] MSG: {repr(msg)}", file=sys.stderr)  # ← aggiungi questa riga
+        tgapi.send_message(TELEGRAM_CHAT_ID, msg, parse_mode="HTML")
