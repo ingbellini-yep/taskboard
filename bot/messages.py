@@ -11,11 +11,11 @@ def record_saved(code: str, title: str, prj_label: str | None, due_date: str | N
     icon = icons.get(kind, "✅")
     lines = [
         f"{icon} {kind_label(kind)} salvato",
-        f"📎 `{code}`",
+        f"📎 <code>{code}</code>",
     ]
     if prj_label:
-        lines.append(f"📁 {prj_label}")
-    lines.append(f"📝 {title}")
+        lines.append(f"📁 {_esc(prj_label)}")
+    lines.append(f"📝 {_esc(title)}")
     if due_date:
         dt = datetime.fromisoformat(due_date)
         lines.append(f"⏰ {format_it_date(dt)}")
@@ -25,11 +25,11 @@ def record_saved(code: str, title: str, prj_label: str | None, due_date: str | N
 def event_saved(code: str, title: str, prj_label: str | None, start: str | None) -> str:
     lines = [
         "✅ Event salvato",
-        f"📎 `{code}`",
+        f"📎 <code>{code}</code>",
     ]
     if prj_label:
-        lines.append(f"📁 {prj_label}")
-    lines.append(f"📝 {title}")
+        lines.append(f"📁 {_esc(prj_label)}")
+    lines.append(f"📝 {_esc(title)}")
     if start:
         dt = datetime.fromisoformat(start)
         lines.append(f"📅 {format_it_datetime(dt)}")
@@ -38,13 +38,13 @@ def event_saved(code: str, title: str, prj_label: str | None, start: str | None)
 
 def conflict_warning(new_title: str, new_start: str, conflicts: list[dict]) -> str:
     lines = [
-        "⚠️ *CONFLITTO RILEVATO*\n",
-        f"Stai aggiungendo:\n  📅 {new_title} — {new_start}\n",
+        "⚠️ <b>CONFLITTO RILEVATO</b>\n",
+        f"Stai aggiungendo:\n  📅 {_esc(new_title)} — {_esc(new_start)}\n",
         "Conflitto con:",
     ]
     for c in conflicts[:3]:
         start = datetime.fromisoformat(c["rec_event_start"])
-        lines.append(f"  `{c['rec_code']}` — {c['rec_title']}")
+        lines.append(f"  <code>{c['rec_code']}</code> — {_esc(c['rec_title'])}")
         lines.append(f"  📅 {format_it_datetime(start)}")
     lines.append("\nProcedi comunque?")
     return "\n".join(lines)
@@ -59,38 +59,34 @@ def daily_digest(today: datetime, events: list[dict], tasks: list[dict], alerts:
     ]
 
     if events:
-        lines.append("\n📅 *APPUNTAMENTI*")
+        lines.append("\n📅 <b>APPUNTAMENTI</b>")
         for ev in events:
             start = datetime.fromisoformat(ev["rec_event_start"])
             end_str = ""
             if ev.get("rec_event_end"):
                 end = datetime.fromisoformat(ev["rec_event_end"])
                 end_str = f"→{end.strftime('%H:%M')}"
-            prj = ""
-            if ev.get("prj_label") and isinstance(ev["prj_label"], dict):
-                prj = f" — {ev['prj_label']['prj_label']}"
-            elif ev.get("prj_label"):
-                prj = f" — {ev['prj_label']}"
-            lines.append(f"  `{start.strftime('%H:%M')}`{end_str}  {ev['rec_title']}{prj}")
+            prj = _get_prj_label(ev)
+            lines.append(
+                f"  <code>{start.strftime('%H:%M')}</code>{end_str}  {_esc(ev['rec_title'])}{prj}"
+            )
             lines.append(f"  {ev['rec_code']}")
 
     if tasks:
-        lines.append("\n✅ *TASK IN SCADENZA OGGI*")
+        lines.append("\n✅ <b>TASK IN SCADENZA OGGI</b>")
         for t in tasks:
-            prj = ""
-            if t.get("prj_label") and isinstance(t["prj_label"], dict):
-                prj = f"  {t['prj_label']['prj_label']}"
-            lines.append(f"  `{t['rec_code']}`  {t['rec_title']}{prj}")
+            prj = _get_prj_label(t)
+            lines.append(f"  <code>{t['rec_code']}</code>  {_esc(t['rec_title'])}{prj}")
 
     if alerts:
-        lines.append("\n⏰ *AVVISI ANTICIPATI*")
+        lines.append("\n⏰ <b>AVVISI ANTICIPATI</b>")
         for a in alerts:
             start = datetime.fromisoformat(a["rec_event_start"])
             days = a.get("days_to_event", "?")
-            prj = ""
-            if a.get("prj_label") and isinstance(a["prj_label"], dict):
-                prj = f" — {a['prj_label']['prj_label']}"
-            lines.append(f"  [{days}gg] `{a['rec_code']}`  {a['rec_title']}{prj}")
+            prj = _get_prj_label(a)
+            lines.append(
+                f"  [{days}gg] <code>{a['rec_code']}</code>  {_esc(a['rec_title'])}{prj}"
+            )
             lines.append(f"  {format_it_datetime(start)}")
 
     if not events and not tasks and not alerts:
@@ -107,9 +103,31 @@ def kind_label(k: str) -> str:
 def inbox_list(records: list[dict]) -> str:
     if not records:
         return "📥 Inbox vuota"
-    lines = ["📥 *INBOX*\n"]
+    lines = ["📥 <b>INBOX</b>\n"]
     for r in records[:10]:
         kind = kind_label(r["rec_kind"])
-        lines.append(f"  [{kind}] {r['rec_title']}")
-        lines.append(f"  `{r['rec_id'][:8]}…`\n")
+        lines.append(f"  [{kind}] {_esc(r['rec_title'])}")
+        lines.append(f"  <code>{r['rec_id'][:8]}…</code>\n")
     return "\n".join(lines)
+
+
+# ─── helpers interni ──────────────────────────────────────────────────────────
+
+def _esc(text: str) -> str:
+    """Escapa i caratteri speciali HTML per Telegram."""
+    return (
+        str(text)
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+    )
+
+
+def _get_prj_label(record: dict) -> str:
+    """Estrae il label del progetto da un record, gestendo sia dict che stringa."""
+    prj = record.get("prj_label")
+    if not prj:
+        return ""
+    if isinstance(prj, dict):
+        return f" — {_esc(prj.get('prj_label', ''))}"
+    return f" — {_esc(str(prj))}"

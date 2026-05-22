@@ -33,7 +33,7 @@ def cron_handler():
         tasks  = get_today_tasks()
         alerts = get_upcoming_event_alerts()
         msg = daily_digest(now, events, tasks, alerts)
-        tgapi.send_message(TELEGRAM_CHAT_ID, msg, parse_mode="Markdown")
+        tgapi.send_message(TELEGRAM_CHAT_ID, msg, parse_mode="HTML")
         return "Digest inviato", 200
     except Exception as exc:
         print(f"[cron] ERROR: {exc}", file=sys.stderr)
