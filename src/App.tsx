@@ -4,9 +4,10 @@ import { CompletatiView } from './components/CompletatiView'
 import { ArchiviatiView } from './components/ArchiviatiView'
 import { InboxTab } from './components/InboxTab'
 import { OreView } from './components/OreView'
+import { CalendarView } from './components/CalendarView'
 import { useStats } from './hooks/useStats'
 
-type Tab = 'aperti' | 'inbox' | 'completati' | 'archiviati' | 'ore'
+type Tab = 'aperti' | 'inbox' | 'completati' | 'archiviati' | 'ore' | 'calendario'
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('aperti')
@@ -78,6 +79,9 @@ export default function App() {
           <TabButton active={tab === 'ore'} onClick={() => setTab('ore')}>
             Ore
           </TabButton>
+          <TabButton active={tab === 'calendario'} onClick={() => setTab('calendario')}>
+            📅 Calendario
+          </TabButton>
         </div>
       </div>
 
@@ -88,6 +92,7 @@ export default function App() {
         {tab === 'completati' && <CompletatiView />}
         {tab === 'archiviati' && <ArchiviatiView />}
         {tab === 'ore' && <OreView />}
+        {tab === 'calendario' && <CalendarView />}
       </main>
     </div>
   )

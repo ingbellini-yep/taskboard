@@ -50,6 +50,7 @@ export interface TbRecord {
   rec_updated_at: string
   rec_done_at: string | null
   rec_hours: number | null
+  rec_google_event_id: string | null
   // joined via view
   prj_label: string | null
   ws_label: string | null
