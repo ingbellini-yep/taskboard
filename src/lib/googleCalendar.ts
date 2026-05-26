@@ -1,4 +1,6 @@
-const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string
+const CLIENT_ID: string =
+  (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined) ||
+  '662062928198-6mdk974dlfk8hu8sg8nmh1att98mvcr9.apps.googleusercontent.com'
 const SCOPES =
   'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events'
 
