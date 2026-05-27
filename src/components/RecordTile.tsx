@@ -5,6 +5,7 @@ import { closeRecord, deleteRecord, archiveRecord } from '../hooks/useRecords'
 import { CloseTaskModal } from './CloseTaskModal'
 import { DeleteMemoModal } from './DeleteMemoModal'
 import { ReassignTaskModal } from './ReassignTaskModal'
+import { RecordDetailModal } from './RecordDetailModal'
 
 interface Props {
   record: TbRecord
@@ -31,6 +32,7 @@ function priorityBadgeLabel(r: TbRecord): string {
 }
 
 export function RecordTile({ record: r }: Props) {
+  const [showDetail, setShowDetail] = useState(false)
   const [showCloseModal, setShowCloseModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showReassignModal, setShowReassignModal] = useState(false)
@@ -54,8 +56,10 @@ export function RecordTile({ record: r }: Props) {
 
   return (
     <>
+      {/* Card — cliccabile per aprire il dettaglio */}
       <div
-        className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col gap-2 shadow-sm hover:shadow-md hover:border-gray-300 transition-all duration-150"
+        onClick={() => setShowDetail(true)}
+        className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col gap-2 shadow-sm hover:shadow-md hover:border-gray-300 transition-all duration-150 cursor-pointer"
         style={{ borderLeftColor: wsColor, borderLeftWidth: 3 }}
       >
         {/* Codice record */}
@@ -99,7 +103,7 @@ export function RecordTile({ record: r }: Props) {
           </p>
         )}
 
-        {/* Footer: date + action button */}
+        {/* Footer: date + action buttons */}
         <div className="flex items-center justify-between mt-auto pt-1">
           <div className="flex flex-wrap gap-1">
             {r.rec_due_date && r.rec_kind !== 'EV' && (
@@ -117,25 +121,25 @@ export function RecordTile({ record: r }: Props) {
             ))}
           </div>
 
-          {/* Task: close + reassign + delete buttons */}
+          {/* Task: close + reassign + delete */}
           {r.rec_kind === 'T' && (
             <div className="ml-2 flex gap-1 shrink-0">
               <button
-                onClick={() => setShowCloseModal(true)}
+                onClick={e => { e.stopPropagation(); setShowCloseModal(true) }}
                 className="w-8 h-8 flex items-center justify-center rounded border border-gray-200 bg-gray-50 hover:bg-green-50 hover:border-green-300 hover:text-green-600 text-gray-400 text-sm transition-colors"
                 title="Chiudi task"
               >
                 ✓
               </button>
               <button
-                onClick={() => setShowReassignModal(true)}
+                onClick={e => { e.stopPropagation(); setShowReassignModal(true) }}
                 className="w-8 h-8 flex items-center justify-center rounded border border-gray-200 bg-gray-50 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 text-gray-400 text-sm transition-colors"
                 title="Riattribuisci task"
               >
                 ✏️
               </button>
               <button
-                onClick={() => setShowDeleteModal(true)}
+                onClick={e => { e.stopPropagation(); setShowDeleteModal(true) }}
                 className="w-8 h-8 flex items-center justify-center rounded border border-gray-200 bg-gray-50 hover:bg-red-50 hover:border-red-300 hover:text-red-600 text-gray-400 text-sm transition-colors"
                 title="Elimina task"
               >
@@ -144,18 +148,18 @@ export function RecordTile({ record: r }: Props) {
             </div>
           )}
 
-          {/* Memo: archive + delete buttons */}
+          {/* Memo: archive + delete */}
           {r.rec_kind === 'M' && (
             <div className="ml-2 flex gap-1 shrink-0">
               <button
-                onClick={handleArchive}
+                onClick={e => { e.stopPropagation(); handleArchive() }}
                 className="w-8 h-8 flex items-center justify-center rounded border border-gray-200 bg-gray-50 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 text-gray-400 text-sm transition-colors"
                 title="Archivia memo"
               >
                 📁
               </button>
               <button
-                onClick={() => setShowDeleteModal(true)}
+                onClick={e => { e.stopPropagation(); setShowDeleteModal(true) }}
                 className="w-8 h-8 flex items-center justify-center rounded border border-gray-200 bg-gray-50 hover:bg-red-50 hover:border-red-300 hover:text-red-600 text-gray-400 text-sm transition-colors"
                 title="Elimina memo"
               >
@@ -163,10 +167,10 @@ export function RecordTile({ record: r }: Props) {
               </button>
             </div>
           )}
-          {/* EV: nessun bottone */}
         </div>
       </div>
 
+      {/* Modali rapidi dalla tile (senza aprire il dettaglio) */}
       {showCloseModal && (
         <CloseTaskModal
           recCode={r.rec_code ?? null}
@@ -190,6 +194,14 @@ export function RecordTile({ record: r }: Props) {
           recCode={r.rec_code ?? null}
           onDone={() => setShowReassignModal(false)}
           onCancel={() => setShowReassignModal(false)}
+        />
+      )}
+
+      {/* Scheda dettaglio completa */}
+      {showDetail && (
+        <RecordDetailModal
+          record={r}
+          onClose={() => setShowDetail(false)}
         />
       )}
     </>
