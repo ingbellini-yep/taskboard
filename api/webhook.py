@@ -1,11 +1,13 @@
 """
-Vercel Serverless Function — webhook Telegram WSGI.
-Riceve aggiornamenti Telegram via POST /api/webhook
+Vercel Serverless Function — webhook Telegram.
+Riceve aggiornamenti Telegram via POST /api/webhook.
+Handler in formato BaseHTTPRequestHandler (supportato nativamente da Vercel Python).
 """
 from __future__ import annotations
 import sys
 import os
 import json
+from http.server import BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -13,45 +15,42 @@ from bot.config import WEBHOOK_SECRET
 from bot.dispatcher import process_update
 
 
-def handler(environ, start_response):
-    method = environ.get("REQUEST_METHOD", "GET")
+class handler(BaseHTTPRequestHandler):
 
-    if method == "GET":
+    def do_GET(self):
         body = b"Taskboard webhook OK"
-        start_response("200 OK", [
-            ("Content-Type", "text/plain"),
-            ("Content-Length", str(len(body)))
-        ])
-        return [body]
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
-    if method == "POST":
+    def do_POST(self):
         # Verifica secret header
-        secret_header = environ.get("HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN", "")
+        secret_header = self.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
         if WEBHOOK_SECRET and secret_header != WEBHOOK_SECRET:
             body = b"Forbidden"
-            start_response("403 Forbidden", [
-                ("Content-Type", "text/plain"),
-                ("Content-Length", str(len(body)))
-            ])
-            return [body]
+            self.send_response(403)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
 
         # Leggi body
-        try:
-            content_length = int(environ.get("CONTENT_LENGTH", 0))
-        except (ValueError, TypeError):
-            content_length = 0
-
-        raw = environ.get("wsgi.input", b"").read(content_length)
+        content_length = int(self.headers.get("Content-Length", 0) or 0)
+        raw = self.rfile.read(content_length)
 
         try:
             update_data = json.loads(raw)
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, ValueError):
             body = b"Bad Request"
-            start_response("400 Bad Request", [
-                ("Content-Type", "text/plain"),
-                ("Content-Length", str(len(body)))
-            ])
-            return [body]
+            self.send_response(400)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
 
         # Processa update
         try:
@@ -60,16 +59,12 @@ def handler(environ, start_response):
             print(f"[webhook] ERROR: {exc}", file=sys.stderr)
 
         body = b"OK"
-        start_response("200 OK", [
-            ("Content-Type", "text/plain"),
-            ("Content-Length", str(len(body)))
-        ])
-        return [body]
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
-    # Metodo non supportato
-    body = b"Method Not Allowed"
-    start_response("405 Method Not Allowed", [
-        ("Content-Type", "text/plain"),
-        ("Content-Length", str(len(body)))
-    ])
-    return [body]
+    def log_message(self, format, *args):
+        # Disabilita log HTTP di default (evita rumore nei log Vercel)
+        pass

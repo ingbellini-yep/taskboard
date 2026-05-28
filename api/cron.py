@@ -1,6 +1,11 @@
-"""Vercel Serverless Function — digest mattutino WSGI."""
+"""
+Vercel Serverless Function — digest mattutino.
+Handler in formato BaseHTTPRequestHandler (supportato nativamente da Vercel Python).
+"""
 from __future__ import annotations
-import sys, os, json
+import sys
+import os
+from http.server import BaseHTTPRequestHandler
 from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -10,32 +15,49 @@ from bot.messages import daily_digest
 import requests as _req
 
 
-def handler(environ, start_response):
-    try:
-        now    = datetime.now(timezone.utc)
-        events = get_today_events()
-        tasks  = get_today_tasks()
-        alerts = get_upcoming_event_alerts()
-        msg    = daily_digest(now, events, tasks, alerts)
-        if not msg.strip():
-            msg = "⚠️ Digest vuoto"
+class handler(BaseHTTPRequestHandler):
 
-        chat_id = int(os.environ.get("TELEGRAM_CHAT_ID", "0"))
-        token   = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-        print(f"[cron] chat_id={chat_id} msg_len={len(msg)}", file=sys.stderr)
+    def do_GET(self):
+        self._run_cron()
 
-        _req.post(
-            f"https://api.telegram.org/bot{token}/sendMessage",
-            json={"chat_id": chat_id, "text": msg, "parse_mode": "HTML"},
-            timeout=10
-        ).raise_for_status()
+    def do_POST(self):
+        self._run_cron()
 
-        body = b"Digest inviato"
-        start_response("200 OK", [("Content-Type", "text/plain"), ("Content-Length", str(len(body)))])
-        return [body]
+    def _run_cron(self):
+        try:
+            now    = datetime.now(timezone.utc)
+            events = get_today_events()
+            tasks  = get_today_tasks()
+            alerts = get_upcoming_event_alerts()
+            msg    = daily_digest(now, events, tasks, alerts)
+            if not msg.strip():
+                msg = "⚠️ Digest vuoto"
 
-    except Exception as exc:
-        print(f"[cron] ERROR: {exc}", file=sys.stderr)
-        body = str(exc).encode()
-        start_response("500 Internal Server Error", [("Content-Type", "text/plain"), ("Content-Length", str(len(body)))])
-        return [body]
+            chat_id = int(os.environ.get("TELEGRAM_CHAT_ID", "0"))
+            token   = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+            print(f"[cron] chat_id={chat_id} msg_len={len(msg)}", file=sys.stderr)
+
+            _req.post(
+                f"https://api.telegram.org/bot{token}/sendMessage",
+                json={"chat_id": chat_id, "text": msg, "parse_mode": "HTML"},
+                timeout=10,
+            ).raise_for_status()
+
+            body = b"Digest inviato"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        except Exception as exc:
+            print(f"[cron] ERROR: {exc}", file=sys.stderr)
+            body = str(exc).encode()
+            self.send_response(500)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+    def log_message(self, format, *args):
+        pass
