@@ -1,8 +1,8 @@
 {
   "version": 2,
   "functions": {
-    "api/webhook.py": {},
-    "api/cron.py":    {}
+    "api/webhook.py": { "maxDuration": 10 },
+    "api/cron.py":    { "maxDuration": 30 }
   },
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
