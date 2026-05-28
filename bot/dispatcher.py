@@ -20,7 +20,7 @@ from .config import (
 from .database import get_project
 from .session import get_session, set_session, clear_session
 from . import tgapi
-from .handlers import task, memo, event, oggi, progetto, inbox
+from .handlers import task, memo, event, oggi, progetto, inbox, settimana, urgente
 
 # Bot usato solo per de_json (nessuna chiamata API su di esso)
 _parse_bot = telegram.Bot(token=BOT_TOKEN or "placeholder")
@@ -53,6 +53,12 @@ def _handle_message(msg: telegram.Message) -> None:
         return
     if text.startswith("/oggi"):
         oggi.cmd_oggi(chat_id)
+        return
+    if text.startswith("/settimana"):
+        settimana.cmd_settimana(chat_id)
+        return
+    if text.startswith("/urgente"):
+        urgente.cmd_urgente(chat_id)
         return
     if text.startswith("/progetto"):
         progetto.cmd_progetto(chat_id, text)
@@ -87,7 +93,7 @@ def _handle_message(msg: telegram.Message) -> None:
         progetto.on_search_query(chat_id, text.strip())
     else:
         if text and not text.startswith("/"):
-            tgapi.send_message(chat_id, "Usa /task, /memo, /ev, /oggi, /progetto o /inbox.")
+            tgapi.send_message(chat_id, "Usa /task, /memo, /ev, /oggi, /settimana, /urgente, /progetto o /inbox.")
 
 
 # ─── Callback query handler ───────────────────────────────────────────────────
@@ -160,12 +166,16 @@ def _handle_callback(cq: telegram.CallbackQuery) -> None:
 def _send_help(chat_id: int) -> None:
     tgapi.send_message(
         chat_id,
-        "📋 *Taskboard Bot*\n\n"
+        "📋 <b>Taskboard Bot</b>\n\n"
+        "<b>Crea</b>\n"
         "/task — Nuovo task\n"
         "/memo — Nuovo memo (testo, foto, vocale)\n"
-        "/ev — Nuovo evento con conflict check\n"
+        "/ev — Nuovo evento con conflict check\n\n"
+        "<b>Visualizza</b>\n"
         "/oggi — Digest giornata corrente\n"
+        "/settimana — Task ed eventi della settimana\n"
+        "/urgente — Task ad alta priorità aperti\n"
         "/progetto [nome] — Apri progetto\n"
-        "/inbox — Visualizza record senza progetto",
-        parse_mode="Markdown",
+        "/inbox — Record senza progetto",
+        parse_mode="HTML",
     )

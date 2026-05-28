@@ -144,6 +144,65 @@ def get_today_tasks() -> list[dict]:
     return r.data or []
 
 
+def get_week_events() -> list[dict]:
+    """Eventi da oggi a domenica della settimana corrente."""
+    from datetime import timedelta
+    today = date.today()
+    week_sunday = today + timedelta(days=(6 - today.weekday()))
+    today_start = datetime(today.year, today.month, today.day, 0, 0, 0, tzinfo=timezone.utc)
+    week_end    = datetime(week_sunday.year, week_sunday.month, week_sunday.day, 23, 59, 59, tzinfo=timezone.utc)
+    r = (
+        db().table("tb_records")
+        .select("rec_code, rec_title, rec_event_start, rec_event_end, rec_prj_code, prj_label:tb_projects!rec_prj_id(prj_label)")
+        .eq("rec_kind", "EV")
+        .not_.in_("rec_status", ["chiuso", "archiviato"])
+        .gte("rec_event_start", today_start.isoformat())
+        .lte("rec_event_start", week_end.isoformat())
+        .order("rec_event_start")
+        .execute()
+    )
+    return r.data or []
+
+
+def get_week_tasks() -> list[dict]:
+    """Task in scadenza entro domenica corrente (inclusi scaduti)."""
+    from datetime import timedelta
+    today = date.today()
+    week_sunday = today + timedelta(days=(6 - today.weekday()))
+    r = (
+        db().table("tb_records")
+        .select("rec_code, rec_title, rec_due_date, rec_priority, rec_status, rec_prj_code, prj_label:tb_projects!rec_prj_id(prj_label)")
+        .eq("rec_kind", "T")
+        .not_.in_("rec_status", ["chiuso", "archiviato"])
+        .not_.is_("rec_due_date", "null")
+        .lte("rec_due_date", week_sunday.isoformat())
+        .order("rec_due_date")
+        .execute()
+    )
+    return r.data or []
+
+
+def get_urgent_tasks() -> list[dict]:
+    """Task priorità alta (1) aperti/in_progress/sospesi."""
+    r = (
+        db().table("tb_records")
+        .select("rec_code, rec_title, rec_due_date, rec_status, rec_prj_code, prj_label:tb_projects!rec_prj_id(prj_label)")
+        .eq("rec_kind", "T")
+        .eq("rec_priority", 1)
+        .in_("rec_status", ["aperto", "in_progress", "sospeso"])
+        .order("rec_due_date", nullsfirst=False)
+        .execute()
+    )
+    # Riordina: scaduti prima, poi per data, poi senza data
+    today = date.today().isoformat()
+    with_date    = sorted([r for r in (r.data or []) if r.get("rec_due_date")],
+                          key=lambda x: x["rec_due_date"])
+    without_date = [r for r in (r.data or []) if not r.get("rec_due_date")]
+    overdue  = [r for r in with_date if r["rec_due_date"] < today]
+    upcoming = [r for r in with_date if r["rec_due_date"] >= today]
+    return overdue + upcoming + without_date
+
+
 def get_upcoming_event_alerts() -> list[dict]:
     """Events where today falls within the alert window."""
     today = date.today()

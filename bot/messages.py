@@ -96,6 +96,103 @@ def daily_digest(today: datetime, events: list[dict], tasks: list[dict], alerts:
     return "\n".join(lines)
 
 
+def week_digest(week_start: "date", week_end: "date", events: list[dict], tasks: list[dict]) -> str:
+    from datetime import date, timedelta
+    giorni = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"]
+    today = date.today()
+
+    lines = [
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        f"📅 SETTIMANA — {week_start.strftime('%d/%m')} → {week_end.strftime('%d/%m/%Y')}",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+    ]
+
+    if events:
+        lines.append(f"\n📅 <b>APPUNTAMENTI ({len(events)})</b>")
+        for ev in events:
+            start = datetime.fromisoformat(ev["rec_event_start"])
+            giorno = giorni[start.weekday()]
+            ora_s  = start.strftime("%H:%M")
+            ora_e  = ""
+            if ev.get("rec_event_end"):
+                end = datetime.fromisoformat(ev["rec_event_end"])
+                ora_e = f"→{end.strftime('%H:%M')}"
+            prj = _get_prj_label(ev)
+            lines.append(
+                f"  <b>{giorno} {start.strftime('%d/%m')}</b>  "
+                f"<code>{ora_s}{ora_e}</code>  {_esc(ev['rec_title'])}{prj}"
+            )
+            lines.append(f"  <code>{ev['rec_code']}</code>")
+
+    if tasks:
+        lines.append(f"\n✅ <b>TASK IN SCADENZA ({len(tasks)})</b>")
+        for t in tasks:
+            due = t["rec_due_date"]
+            due_date = date.fromisoformat(due)
+            diff = (due_date - today).days
+            if diff < 0:
+                label = f"🔴 Scaduto {abs(diff)}gg fa"
+            elif diff == 0:
+                label = "🟠 Scade oggi"
+            elif diff == 1:
+                label = "🟡 Scade domani"
+            else:
+                label = f"📅 {due_date.strftime('%d/%m')}"
+            prj = _get_prj_label(t)
+            lines.append(
+                f"  {label}  <code>{t['rec_code']}</code>  {_esc(t['rec_title'])}{prj}"
+            )
+
+    if not events and not tasks:
+        lines.append("\n🎉 Nessun impegno in settimana!")
+
+    lines.append("━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    return "\n".join(lines)
+
+
+def urgent_list(tasks: list[dict]) -> str:
+    from datetime import date
+    today = date.today()
+
+    if not tasks:
+        return (
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            "🟢 URGENTI — nessun task\n"
+            "━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        )
+
+    lines = [
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        f"🔴 URGENTI — {len(tasks)} task",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+    ]
+
+    for t in tasks:
+        status_icon = "⏸" if t.get("rec_status") == "sospeso" else "🔴"
+        lines.append(f"\n{status_icon} <code>{t['rec_code']}</code>")
+        lines.append(f"   {_esc(t['rec_title'])}")
+        prj = _get_prj_label(t)
+        if prj:
+            lines.append(f"   📁{prj}")
+        due = t.get("rec_due_date")
+        if due:
+            due_date = date.fromisoformat(due)
+            diff = (due_date - today).days
+            if diff < 0:
+                lines.append(f"   ⚠️ Scaduto {abs(diff)}gg fa")
+            elif diff == 0:
+                lines.append("   🔥 Scade oggi")
+            elif diff == 1:
+                lines.append("   ⏰ Scade domani")
+            else:
+                lines.append(f"   ⏰ Scade in {diff}gg  ({due_date.strftime('%d/%m/%Y')})")
+        else:
+            lines.append("   📌 Nessuna scadenza")
+
+    lines.append("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+    return "\n".join(lines)
+
+
 def kind_label(k: str) -> str:
     return {"T": "Task", "M": "Memo", "EV": "Event"}.get(k, k)
 
