@@ -272,7 +272,7 @@ function KanbanView({ records, onMove, onDelete, onAdd }: {
             </div>
 
             {/* Add form */}
-            <AddForm defaultStatus={col.status} onAdd={params => onAdd({ ...params })} />
+            <AddForm onAdd={params => onAdd({ ...params })} />
 
             {/* Cards */}
             {colRecords.map(r => (
