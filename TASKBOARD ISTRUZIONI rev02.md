@@ -211,32 +211,39 @@ Claude deve attivarsi automaticamente quando l’utente usa frasi come:
 
 ## Small Tasks & To Do
 
+### Filosofia
+
+Gli **Small Task & To Do** sono **piccole incombenze autoconclusive NON legate ad alcun
+progetto**. Possono ricadere in qualunque categoria, che serve solo come etichetta:
+
+- *”paga la bolletta del telefono”* → categoria `PERS` o `FAM`
+- *”rinnova l’iscrizione all’albo”* → categoria `LP`
+- *”partecipa all’avviso tal dei tali”* → categoria `RB`
+- *”allega i documenti per il rinnovo del contratto”* → categoria `PNRR`
+
+**Regola ferrea:** uno small task ha **sempre** `rec_prj_id = NULL` e `rec_prj_code = NULL`.
+La categoria è solo `rec_ws_code` (facoltativa). Non inquina mai la conoscenza per-progetto.
+
 ### Quando usare Small Tasks
 
 Usa automaticamente `rec_bucket = ‘small_tasks’` (senza chiedere all’utente) quando:
 
 - L’utente dice **”aggiungi un to-do”**, **”small task”**, **”cosa veloce da fare”**, **”promemoria”**
-- Non viene menzionato alcun progetto specifico
-- Il task è chiaramente personale/generico e non appartiene a un cantiere/commessa
+- È una piccola incombenza autoconclusiva
+- Non appartiene al lavoro continuativo di un cantiere/commessa specifico
 
-**Non usare small_tasks** se il contesto è un progetto specifico (es. “aggiungi al progetto LP-003”).
-
-### Progetto SMALL
-
-- **prj_id:** `fb30b6d8-1590-41b5-af7d-fce6533b5e01`
-- **prj_code:** `SMALL`
-- **prj_label:** `Small Tasks & To Do`
+**Non usare small_tasks** se il contesto è un progetto specifico (es. “aggiungi al progetto LP-003”):
+in quel caso è un task di progetto normale (`rec_bucket = ‘project’`).
 
 ### Come inserire uno small task
 
 ```sql
 INSERT INTO tb_records (
-  rec_prj_id, rec_prj_code, rec_ws_id, rec_ws_code,
+  rec_prj_id, rec_prj_code, rec_ws_code,
   rec_kind, rec_title, rec_status, rec_priority,
   rec_due_date, rec_bucket, rec_source
 ) VALUES (
-  ‘fb30b6d8-1590-41b5-af7d-fce6533b5e01’,  -- prj_id SMALL
-  ‘SMALL’,
+  NULL,         -- MAI legato a un progetto
   NULL,
   ‘LP’,         -- categoria opzionale: LP / RB / PNRR / FAM / PERS / NULL
   ‘T’,
@@ -249,18 +256,21 @@ INSERT INTO tb_records (
 );
 ```
 
+> Nota: `rec_ws_id` viene riempito automaticamente da un trigger partendo da `rec_ws_code`.
+> Per gli small task il trigger forza comunque `rec_prj_id = NULL`.
+
 ### Categoria (rec_ws_code) per small tasks
 
-La categoria è **opzionale**. Chiederla solo se il contesto lo suggerisce chiaramente.
+La categoria è **opzionale** ed è solo un’etichetta. Dedurla dal contesto quando chiaro:
 
 | Codice | Quando usarlo |
 |--------|--------------|
-| `LP`   | Task professionale libero professionista |
-| `RB`   | Riguarda Rebuilding Srl |
-| `PNRR` | Riguarda progetti PNRR |
-| `FAM`  | Famiglia / casa |
-| `PERS` | Personale |
-| `NULL` | Generico, non categorizzato (default se non specificato) |
+| `LP`   | Incombenza professionale libero professionista (es. iscrizione albo) |
+| `RB`   | Riguarda Rebuilding Srl (es. partecipare a un avviso) |
+| `PNRR` | Riguarda adempimenti PNRR (es. allegare documenti contratto) |
+| `FAM`  | Famiglia / casa (es. bolletta, spesa) |
+| `PERS` | Personale (es. abbonamento, previdenza) |
+| `NULL` | Generico, non categorizzato |
 
 ### Conferma small task
 

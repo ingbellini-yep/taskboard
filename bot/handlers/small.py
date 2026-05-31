@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from ..config import SMALL_TITLE, SMALL_DUE, IDLE
-from ..database import create_record, SMALL_PRJ_ID
+from ..database import create_record
 from ..keyboards import small_priority_keyboard, small_category_keyboard
 from ..parsers import parse_datetime
 from ..session import set_session, get_session, clear_session
@@ -14,10 +14,10 @@ def cmd_small_quick(chat_id: int, title: str) -> None:
     Usato dalle frasi trigger: 'todo: titolo', 'da fare: titolo', ecc.
     """
     payload = {
-        "rec_prj_id":   SMALL_PRJ_ID,
-        "rec_prj_code": "SMALL",
+        "rec_prj_id":   None,          # Small Task: mai legato a un progetto
+        "rec_prj_code": None,
         "rec_ws_id":    None,
-        "rec_ws_code":  None,
+        "rec_ws_code":  None,          # categoria opzionale, nessuna di default
         "rec_code":     None,
         "rec_kind":     "T",
         "rec_title":    title,
@@ -87,10 +87,10 @@ def on_due(chat_id: int, text: str) -> None:
     ws_code = data.get("category")  # LP / RB / PNRR / FAM / PERS / None
 
     payload = {
-        "rec_prj_id":   SMALL_PRJ_ID,
-        "rec_prj_code": "SMALL",
+        "rec_prj_id":   None,          # Small Task: mai legato a un progetto
+        "rec_prj_code": None,
         "rec_ws_id":    None,
-        "rec_ws_code":  ws_code,
+        "rec_ws_code":  ws_code,       # categoria opzionale (LP/RB/PNRR/FAM/PERS o None)
         "rec_code":     None,
         "rec_kind":     "T",
         "rec_title":    data["title"],

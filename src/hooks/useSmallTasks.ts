@@ -8,9 +8,6 @@ export type SmallView = 'lista' | 'kanban' | 'categoria'
 export type SmallStatusFilter = 'aperti' | 'tutti' | 'chiusi'
 export type SmallSort = 'priorita' | 'scadenza' | 'creazione'
 
-// SMALL project UUID — creato una tantum via migration
-export const SMALL_PRJ_ID = 'fb30b6d8-1590-41b5-af7d-fce6533b5e01'
-
 export const CATEGORY_COLORS: Record<string, string> = {
   LP:   '#1565C0',
   RB:   '#2E7D32',
@@ -94,8 +91,9 @@ export function useSmallTasks() {
       rec_status:   'aperto',
       rec_bucket:   'small_tasks',
       rec_priority: params.priority,
-      rec_ws_code:  params.category,
-      rec_prj_id:   SMALL_PRJ_ID,
+      rec_ws_code:  params.category,   // categoria opzionale — NON è un progetto
+      rec_prj_id:   null,              // Small Task: mai legato a un progetto
+      rec_prj_code: null,
       rec_due_date: params.dueDate,
       rec_source:   'web',
     })

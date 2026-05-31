@@ -230,9 +230,6 @@ def get_urgent_tasks() -> list[dict]:
     return overdue + upcoming + without_date
 
 
-SMALL_PRJ_ID = "fb30b6d8-1590-41b5-af7d-fce6533b5e01"
-
-
 def get_upcoming_event_alerts() -> list[dict]:
     """Events where today falls within the alert window."""
     today = date.today()
