@@ -5,7 +5,6 @@ import {
   categoryColor,
   categoryLabel,
   sortSmall,
-  CATEGORY_COLORS,
 } from '../hooks/useSmallTasks'
 import type { SmallCategory, SmallSort, SmallStatus, SmallStatusFilter, SmallView } from '../hooks/useSmallTasks'
 
@@ -67,11 +66,10 @@ function DueLabel({ date }: { date: string | null }) {
 // ─── Inline add form ──────────────────────────────────────────────────────────
 
 interface AddFormProps {
-  defaultStatus?: SmallStatus
   onAdd: (params: { title: string; priority: number; category: SmallCategory; dueDate: string | null }) => Promise<void>
 }
 
-function AddForm({ defaultStatus = 'aperto', onAdd }: AddFormProps) {
+function AddForm({ onAdd }: AddFormProps) {
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [priority, setPriority] = useState(2)
@@ -385,7 +383,7 @@ function CategoriaView({ records, onToggle, onDelete, onAdd }: {
             </button>
             {isOpen && (
               <div className="border-t border-gray-100 px-4 py-3 bg-gray-50 flex flex-col gap-2">
-                <AddForm onAdd={params => onAdd({ ...params, category: g.code })} />
+                <AddForm onAdd={params => onAdd({ ...params, category: g.code as SmallCategory })} />
                 {g.records.map(r => (
                   <ListRow key={r.rec_id} record={r} onToggle={onToggle} onDelete={onDelete} done={r.rec_status === 'chiuso'} />
                 ))}
