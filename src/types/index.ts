@@ -27,6 +27,22 @@ export interface Project {
   prj_updated_at: string
 }
 
+export type RecordItemKind = 'subtask' | 'update'
+
+export interface TbRecordItem {
+  item_id: string
+  item_parent_id: string
+  item_kind: RecordItemKind
+  item_text: string
+  item_done: boolean
+  item_priority: number | null
+  item_due_date: string | null
+  item_done_at: string | null
+  item_sort: number
+  item_created_at: string
+  item_updated_at: string
+}
+
 export interface TbRecord {
   rec_id: string
   rec_prj_id: string | null

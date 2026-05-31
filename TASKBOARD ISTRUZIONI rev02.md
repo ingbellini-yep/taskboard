@@ -273,6 +273,41 @@ La categoria è **opzionale**. Chiederla solo se il contesto lo suggerisce chiar
 
 -----
 
+## Sub-task e Aggiornamenti (tb_record_items)
+
+Ogni record può avere elementi figli nella tabella `tb_record_items`:
+
+- **Sub-task** (`item_kind = 'subtask'`) — passi/checklist di un **Task** (`T`). Hanno
+  `item_done` (booleano), e opzionalmente `item_priority` (1/2/3) e `item_due_date`.
+- **Aggiornamenti** (`item_kind = 'update'`) — voci cronologiche di un **Memo** (`M`),
+  tipo diario. Solo `item_text` + timestamp.
+
+### Aggiungere un sub-task a un task
+
+```sql
+-- 1. Trova il record padre (per codice)
+SELECT rec_id, rec_kind FROM tb_records WHERE rec_code = 'LP-001-T-005';
+
+-- 2. Inserisci il sub-task
+INSERT INTO tb_record_items (item_parent_id, item_kind, item_text, item_priority, item_due_date)
+VALUES ('UUID_PADRE', 'subtask', 'Chiamare il fornitore', 2, '2026-06-10');
+```
+
+### Aggiungere un aggiornamento a un memo
+
+```sql
+INSERT INTO tb_record_items (item_parent_id, item_kind, item_text)
+VALUES ('UUID_PADRE', 'update', 'Ricevuta conferma via PEC il 31/05');
+```
+
+### Note
+- `item_done_at` si valorizza quando un sub-task viene completato.
+- `item_updated_at` è gestito da trigger automatico.
+- I sub-task NON appaiono nelle board principali: vivono nella scheda del padre.
+- Cancellando il record padre, gli item figli vengono eliminati a cascata.
+
+-----
+
 ## Note tecniche
 
 - Il database è condiviso con Family Budget e Portfolio Manager — usare SEMPRE il prefisso `tb_`

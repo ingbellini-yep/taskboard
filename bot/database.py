@@ -73,6 +73,33 @@ def create_record(payload: dict[str, Any]) -> dict:
     return r.data[0]
 
 
+def get_record_by_code(rec_code: str) -> dict | None:
+    """Trova un record dal suo rec_code (case-insensitive). Ritorna None se assente."""
+    r = (
+        db().table("tb_records")
+        .select("rec_id, rec_code, rec_kind, rec_title, rec_status")
+        .ilike("rec_code", rec_code.strip())
+        .limit(1)
+        .execute()
+    )
+    rows = r.data or []
+    return rows[0] if rows else None
+
+
+def create_record_item(parent_id: str, kind: str, text: str,
+                       priority: int | None = None, due_date: str | None = None) -> dict:
+    """Crea un sub-task ('subtask') o un aggiornamento ('update') figlio di un record."""
+    payload = {
+        "item_parent_id": parent_id,
+        "item_kind":      kind,
+        "item_text":      text,
+        "item_priority":  priority,
+        "item_due_date":  due_date,
+    }
+    r = db().table("tb_record_items").insert(payload).execute()
+    return r.data[0]
+
+
 def get_inbox_records(limit: int = 20) -> list[dict]:
     r = (
         db().table("tb_records")

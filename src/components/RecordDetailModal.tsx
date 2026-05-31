@@ -7,6 +7,8 @@ import { closeRecord, deleteRecord, archiveRecord } from '../hooks/useRecords'
 import { CloseTaskModal } from './CloseTaskModal'
 import { DeleteMemoModal } from './DeleteMemoModal'
 import { ReassignTaskModal } from './ReassignTaskModal'
+import { SubtaskSection } from './SubtaskSection'
+import { UpdatesTimeline } from './UpdatesTimeline'
 
 interface Props {
   record: TbRecord
@@ -245,6 +247,20 @@ export function RecordDetailModal({ record: r, onClose }: Props) {
             <div className="flex items-center gap-2 text-xs text-green-700 bg-green-50 border border-green-100 rounded-lg px-3 py-2">
               <span>📅</span>
               <span>Sincronizzato con Google Calendar</span>
+            </div>
+          )}
+
+          {/* Sub-task (solo Task) */}
+          {r.rec_kind === 'T' && (
+            <div className="pt-1 border-t border-gray-100">
+              <SubtaskSection parentId={r.rec_id} />
+            </div>
+          )}
+
+          {/* Aggiornamenti (solo Memo) */}
+          {r.rec_kind === 'M' && (
+            <div className="pt-1 border-t border-gray-100">
+              <UpdatesTimeline parentId={r.rec_id} />
             </div>
           )}
 

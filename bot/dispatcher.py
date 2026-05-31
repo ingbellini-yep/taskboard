@@ -17,11 +17,12 @@ from .config import (
     EV_PROJECT, EV_TITLE, EV_START, EV_DURATION, EV_ALERT,
     PROJ_SEARCH,
     SMALL_TITLE, SMALL_DUE,
+    ITEM_CODE, ITEM_TEXT,
 )
 from .database import get_project
 from .session import get_session, set_session, clear_session
 from . import tgapi
-from .handlers import task, memo, event, oggi, progetto, inbox, settimana, urgente, small
+from .handlers import task, memo, event, oggi, progetto, inbox, settimana, urgente, small, item
 
 # Bot usato solo per de_json (nessuna chiamata API su di esso)
 _parse_bot = telegram.Bot(token=BOT_TOKEN or "placeholder")
@@ -74,6 +75,12 @@ def _handle_message(msg: telegram.Message) -> None:
     if text.startswith("/small"):
         small.cmd_small(chat_id)
         return
+    if text.startswith("/sub"):
+        item.cmd_sub(chat_id, text)
+        return
+    if text.startswith("/agg"):
+        item.cmd_agg(chat_id, text)
+        return
     if text.startswith("/start") or text.startswith("/help"):
         _send_help(chat_id)
         return
@@ -117,11 +124,15 @@ def _handle_message(msg: telegram.Message) -> None:
             small.on_title(chat_id, text.strip())
     elif state == SMALL_DUE:
         small.on_due(chat_id, text.strip())
+    elif state == ITEM_CODE:
+        item.on_code(chat_id, text.strip())
+    elif state == ITEM_TEXT:
+        item.on_text(chat_id, text.strip())
     else:
         if text and not text.startswith("/"):
             tgapi.send_message(
                 chat_id,
-                "Usa /task, /memo, /ev, /small, /oggi, /settimana, /urgente, /progetto o /inbox.",
+                "Usa /task, /memo, /ev, /small, /sub, /agg, /oggi, /settimana, /urgente, /progetto o /inbox.",
             )
 
 
@@ -208,7 +219,9 @@ def _send_help(chat_id: int) -> None:
         "/task — Nuovo task di progetto\n"
         "/small — Small task / To Do rapido\n"
         "/memo — Nuovo memo (testo, foto, vocale)\n"
-        "/ev — Nuovo evento con conflict check\n\n"
+        "/ev — Nuovo evento con conflict check\n"
+        "/sub [codice] [testo] — Sub-task su un task\n"
+        "/agg [codice] [testo] — Aggiornamento su un memo\n\n"
         "<b>Visualizza</b>\n"
         "/oggi — Digest giornata corrente\n"
         "/settimana — Task ed eventi della settimana\n"
