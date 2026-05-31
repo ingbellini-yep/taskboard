@@ -201,11 +201,75 @@ Dopo ogni operazione di scrittura, confermare con:
 
 Claude deve attivarsi automaticamente quando l’utente usa frasi come:
 
-- *“registra / salva / aggiungi un task…”*
-- *“memo: …”, “ricordami di…”, “prendi nota…”*
-- *“crea un appuntamento / evento…”*
-- *“aggiungi al progetto X…”*
-- *“segna come urgente…”*
+- *”registra / salva / aggiungi un task…”*
+- *”memo: …”, “ricordami di…”, “prendi nota…”*
+- *”crea un appuntamento / evento…”*
+- *”aggiungi al progetto X…”*
+- *”segna come urgente…”*
+
+-----
+
+## Small Tasks & To Do
+
+### Quando usare Small Tasks
+
+Usa automaticamente `rec_bucket = ‘small_tasks’` (senza chiedere all’utente) quando:
+
+- L’utente dice **”aggiungi un to-do”**, **”small task”**, **”cosa veloce da fare”**, **”promemoria”**
+- Non viene menzionato alcun progetto specifico
+- Il task è chiaramente personale/generico e non appartiene a un cantiere/commessa
+
+**Non usare small_tasks** se il contesto è un progetto specifico (es. “aggiungi al progetto LP-003”).
+
+### Progetto SMALL
+
+- **prj_id:** `fb30b6d8-1590-41b5-af7d-fce6533b5e01`
+- **prj_code:** `SMALL`
+- **prj_label:** `Small Tasks & To Do`
+
+### Come inserire uno small task
+
+```sql
+INSERT INTO tb_records (
+  rec_prj_id, rec_prj_code, rec_ws_id, rec_ws_code,
+  rec_kind, rec_title, rec_status, rec_priority,
+  rec_due_date, rec_bucket, rec_source
+) VALUES (
+  ‘fb30b6d8-1590-41b5-af7d-fce6533b5e01’,  -- prj_id SMALL
+  ‘SMALL’,
+  NULL,
+  ‘LP’,         -- categoria opzionale: LP / RB / PNRR / FAM / PERS / NULL
+  ‘T’,
+  ‘Titolo del to-do’,
+  ‘aperto’,
+  2,            -- 1=alta, 2=normale, 3=bassa
+  NULL,         -- scadenza opzionale
+  ‘small_tasks’,
+  ‘claude’
+);
+```
+
+### Categoria (rec_ws_code) per small tasks
+
+La categoria è **opzionale**. Chiederla solo se il contesto lo suggerisce chiaramente.
+
+| Codice | Quando usarlo |
+|--------|--------------|
+| `LP`   | Task professionale libero professionista |
+| `RB`   | Riguarda Rebuilding Srl |
+| `PNRR` | Riguarda progetti PNRR |
+| `FAM`  | Famiglia / casa |
+| `PERS` | Personale |
+| `NULL` | Generico, non categorizzato (default se non specificato) |
+
+### Conferma small task
+
+```
+⚡ Small task salvato
+📝 Titolo del task
+🔵 Priorità: Normale
+🏷 Categoria: Nessuna
+```
 
 -----
 

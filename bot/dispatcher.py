@@ -16,14 +16,18 @@ from .config import (
     MEMO_PROJECT, MEMO_CONTENT, MEMO_CONFIRM,
     EV_PROJECT, EV_TITLE, EV_START, EV_DURATION, EV_ALERT,
     PROJ_SEARCH,
+    SMALL_TITLE, SMALL_DUE,
 )
 from .database import get_project
 from .session import get_session, set_session, clear_session
 from . import tgapi
-from .handlers import task, memo, event, oggi, progetto, inbox, settimana, urgente
+from .handlers import task, memo, event, oggi, progetto, inbox, settimana, urgente, small
 
 # Bot usato solo per de_json (nessuna chiamata API su di esso)
 _parse_bot = telegram.Bot(token=BOT_TOKEN or "placeholder")
+
+# Frasi trigger per small tasks
+_SMALL_TRIGGERS = ("small task:", "todo:", "to do:", "da fare:", "promemoria:")
 
 
 def process_update(update_data: dict[str, Any]) -> None:
@@ -41,6 +45,7 @@ def _handle_message(msg: telegram.Message) -> None:
         return
     chat_id = msg.chat.id
     text = msg.text or ""
+    text_lower = text.lower()
 
     if text.startswith("/task"):
         task.cmd_task(chat_id)
@@ -66,9 +71,23 @@ def _handle_message(msg: telegram.Message) -> None:
     if text.startswith("/inbox"):
         inbox.cmd_inbox(chat_id)
         return
+    if text.startswith("/small"):
+        small.cmd_small(chat_id)
+        return
     if text.startswith("/start") or text.startswith("/help"):
         _send_help(chat_id)
         return
+
+    # Riconosci frasi trigger small tasks (es. "todo: compra pane")
+    for trigger in _SMALL_TRIGGERS:
+        if text_lower.startswith(trigger):
+            title = text[len(trigger):].strip()
+            if title:
+                small.cmd_small_quick(chat_id, title)
+                return
+            else:
+                small.cmd_small(chat_id)
+                return
 
     sess = get_session(chat_id)
     state = sess["state"]
@@ -91,9 +110,19 @@ def _handle_message(msg: telegram.Message) -> None:
             event.on_custom_alert_value(chat_id, text.strip())
     elif state == PROJ_SEARCH:
         progetto.on_search_query(chat_id, text.strip())
+    elif state == SMALL_TITLE:
+        # L'utente ha inserito il titolo e ora attendiamo priorità via callback
+        # Se però non è ancora nel flusso di priorità, gestiamo il titolo
+        if not data.get("title"):
+            small.on_title(chat_id, text.strip())
+    elif state == SMALL_DUE:
+        small.on_due(chat_id, text.strip())
     else:
         if text and not text.startswith("/"):
-            tgapi.send_message(chat_id, "Usa /task, /memo, /ev, /oggi, /settimana, /urgente, /progetto o /inbox.")
+            tgapi.send_message(
+                chat_id,
+                "Usa /task, /memo, /ev, /small, /oggi, /settimana, /urgente, /progetto o /inbox.",
+            )
 
 
 # ─── Callback query handler ───────────────────────────────────────────────────
@@ -134,6 +163,14 @@ def _handle_callback(cq: telegram.CallbackQuery) -> None:
         elif state == EV_PROJECT:
             event.on_bucket_selected(chat_id, bucket)
 
+    elif data_str.startswith("small_pri:"):
+        priority = int(data_str[10:])
+        small.on_priority(chat_id, priority)
+
+    elif data_str.startswith("small_cat:"):
+        cat = data_str[10:]
+        small.on_category(chat_id, None if cat == "none" else cat)
+
     elif data_str == "search_prj":
         set_session(chat_id, PROJ_SEARCH, sess["data"])
         tgapi.send_message(chat_id, "🔍 Inserisci il nome (parziale) del progetto:")
@@ -168,7 +205,8 @@ def _send_help(chat_id: int) -> None:
         chat_id,
         "📋 <b>Taskboard Bot</b>\n\n"
         "<b>Crea</b>\n"
-        "/task — Nuovo task\n"
+        "/task — Nuovo task di progetto\n"
+        "/small — Small task / To Do rapido\n"
         "/memo — Nuovo memo (testo, foto, vocale)\n"
         "/ev — Nuovo evento con conflict check\n\n"
         "<b>Visualizza</b>\n"
@@ -176,6 +214,9 @@ def _send_help(chat_id: int) -> None:
         "/settimana — Task ed eventi della settimana\n"
         "/urgente — Task ad alta priorità aperti\n"
         "/progetto [nome] — Apri progetto\n"
-        "/inbox — Record senza progetto",
+        "/inbox — Record senza progetto\n\n"
+        "<b>Scorciatoie</b>\n"
+        "<code>todo: titolo</code> — Small task rapido\n"
+        "<code>da fare: titolo</code> — Small task rapido",
         parse_mode="HTML",
     )

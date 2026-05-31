@@ -27,6 +27,29 @@ def project_keyboard(include_inbox: bool = True, include_small: bool = False) ->
     return InlineKeyboardMarkup(rows)
 
 
+def small_priority_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([[
+        InlineKeyboardButton("🔴 Alta",    callback_data="small_pri:1"),
+        InlineKeyboardButton("🔵 Normale", callback_data="small_pri:2"),
+        InlineKeyboardButton("⚪ Bassa",   callback_data="small_pri:3"),
+    ]])
+
+
+def small_category_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("LP",   callback_data="small_cat:LP"),
+            InlineKeyboardButton("RB",   callback_data="small_cat:RB"),
+            InlineKeyboardButton("PNRR", callback_data="small_cat:PNRR"),
+        ],
+        [
+            InlineKeyboardButton("FAM",  callback_data="small_cat:FAM"),
+            InlineKeyboardButton("PERS", callback_data="small_cat:PERS"),
+            InlineKeyboardButton("Nessuna", callback_data="small_cat:none"),
+        ],
+    ])
+
+
 def alert_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [
