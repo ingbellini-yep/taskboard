@@ -107,6 +107,13 @@ export async function deleteRecord(recId: string): Promise<void> {
   await supabase.from('tb_records').delete().eq('rec_id', recId)
 }
 
+export async function updateRecordStatus(recId: string, status: 'aperto' | 'in_progress' | 'sospeso'): Promise<void> {
+  await supabase
+    .from('tb_records')
+    .update({ rec_status: status })
+    .eq('rec_id', recId)
+}
+
 export async function archiveRecord(recId: string): Promise<void> {
   await supabase
     .from('tb_records')

@@ -3,9 +3,11 @@ import { useRecords } from '../hooks/useRecords'
 import { useWorkspaces } from '../hooks/useWorkspaces'
 import { RecordTile } from './RecordTile'
 import { NewTaskModal } from './NewTaskModal'
+import { BoardKanban } from './BoardKanban'
 
 type PriorityFilter = 'all' | 'urgente' | 'alta' | 'normale' | 'sospeso'
 type SortOption = 'priorita' | 'scadenza' | 'recenti'
+type ViewMode = 'lista' | 'kanban'
 
 const PRIORITY_PILLS: { value: PriorityFilter; label: string }[] = [
   { value: 'all', label: 'Tutte' },
@@ -23,6 +25,7 @@ export function BoardView() {
   const [filterPriority, setFilterPriority] = useState<PriorityFilter>('all')
   const [filterProject, setFilterProject] = useState<string>('')
   const [sort, setSort] = useState<SortOption>('priorita')
+  const [view, setView] = useState<ViewMode>('lista')
   const [showNewTask, setShowNewTask] = useState(false)
 
   const projects = useMemo(() => {
@@ -159,9 +162,29 @@ export function BoardView() {
           {loading ? '…' : `${filtered.length} task`}
         </span>
 
+        {/* Toggle Lista / Kanban */}
+        <div className="ml-auto flex items-center rounded-lg border border-gray-200 overflow-hidden">
+          <button
+            onClick={() => setView('lista')}
+            className={`text-sm px-3 py-1.5 transition-colors ${
+              view === 'lista' ? 'bg-gray-800 text-white' : 'bg-white text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            ☰ Lista
+          </button>
+          <button
+            onClick={() => setView('kanban')}
+            className={`text-sm px-3 py-1.5 transition-colors ${
+              view === 'kanban' ? 'bg-gray-800 text-white' : 'bg-white text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            ▦ Kanban
+          </button>
+        </div>
+
         <button
           onClick={() => setShowNewTask(true)}
-          className="ml-auto bg-blue-700 text-white text-sm px-4 py-1.5 rounded font-medium hover:bg-blue-800 transition-colors"
+          className="bg-blue-700 text-white text-sm px-4 py-1.5 rounded font-medium hover:bg-blue-800 transition-colors"
         >
           + Nuovo Task
         </button>
@@ -172,6 +195,8 @@ export function BoardView() {
         <LoadingGrid />
       ) : sorted.length === 0 ? (
         <EmptyState />
+      ) : view === 'kanban' ? (
+        <BoardKanban records={sorted} />
       ) : (
         <div className="flex flex-col gap-8">
           {groups.map(({ ws, records: groupRecs }) => (
