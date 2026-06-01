@@ -39,25 +39,33 @@ export function useRecordItems(parentId: string, kind: RecordItemKind) {
 
   async function add(text: string, opts?: { priority?: number | null; dueDate?: string | null }) {
     const sort = items.length > 0 ? Math.max(...items.map(i => i.item_sort)) + 1 : 0
-    await supabase.from('tb_record_items').insert({
+    const { data } = await supabase.from('tb_record_items').insert({
       item_parent_id: parentId,
       item_kind:      kind,
       item_text:      text,
       item_priority:  opts?.priority ?? null,
       item_due_date:  opts?.dueDate ?? null,
       item_sort:      sort,
-    })
+    }).select()
+    if (data && data[0]) {
+      setItems(prev => [...prev, data[0] as TbRecordItem])
+    }
   }
 
   async function toggleDone(item: TbRecordItem) {
     const done = !item.item_done
+    const doneAt = done ? new Date().toISOString() : null
+    setItems(prev => prev.map(i =>
+      i.item_id === item.item_id ? { ...i, item_done: done, item_done_at: doneAt } : i
+    ))
     await supabase
       .from('tb_record_items')
-      .update({ item_done: done, item_done_at: done ? new Date().toISOString() : null })
+      .update({ item_done: done, item_done_at: doneAt })
       .eq('item_id', item.item_id)
   }
 
   async function editText(itemId: string, text: string) {
+    setItems(prev => prev.map(i => i.item_id === itemId ? { ...i, item_text: text } : i))
     await supabase.from('tb_record_items').update({ item_text: text }).eq('item_id', itemId)
   }
 
@@ -65,10 +73,16 @@ export function useRecordItems(parentId: string, kind: RecordItemKind) {
     const payload: Record<string, unknown> = {}
     if ('priority' in fields) payload.item_priority = fields.priority
     if ('dueDate' in fields)  payload.item_due_date = fields.dueDate
+    setItems(prev => prev.map(i => i.item_id === itemId ? { ...i, ...(
+      'priority' in fields ? { item_priority: fields.priority ?? null } : {}
+    ), ...(
+      'dueDate' in fields ? { item_due_date: fields.dueDate ?? null } : {}
+    ) } : i))
     await supabase.from('tb_record_items').update(payload).eq('item_id', itemId)
   }
 
   async function remove(itemId: string) {
+    setItems(prev => prev.filter(i => i.item_id !== itemId))
     await supabase.from('tb_record_items').delete().eq('item_id', itemId)
   }
 

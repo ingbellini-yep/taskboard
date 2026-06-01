@@ -85,7 +85,7 @@ export function useSmallTasks() {
     category: SmallCategory
     dueDate: string | null
   }) {
-    await supabase.from('tb_records').insert({
+    const { data } = await supabase.from('tb_records').insert({
       rec_title:    params.title,
       rec_kind:     'T',
       rec_status:   'aperto',
@@ -96,24 +96,35 @@ export function useSmallTasks() {
       rec_prj_code: null,
       rec_due_date: params.dueDate,
       rec_source:   'web',
-    })
+    }).select()
+    // Aggiornamento ottimistico: aggiunge subito il record restituito
+    if (data && data[0]) {
+      setRecords(prev => [...prev, data[0] as TbRecord])
+    }
   }
 
   async function updateStatus(recId: string, status: SmallStatus) {
+    const doneAt = status === 'chiuso' ? new Date().toISOString() : null
+    // Aggiornamento ottimistico immediato
+    setRecords(prev => prev.map(r =>
+      r.rec_id === recId ? { ...r, rec_status: status, rec_done_at: doneAt } : r
+    ))
     await supabase
       .from('tb_records')
-      .update({
-        rec_status:  status,
-        rec_done_at: status === 'chiuso' ? new Date().toISOString() : null,
-      })
+      .update({ rec_status: status, rec_done_at: doneAt })
       .eq('rec_id', recId)
   }
 
   async function deleteTask(recId: string) {
+    // Rimozione ottimistica immediata
+    setRecords(prev => prev.filter(r => r.rec_id !== recId))
     await supabase.from('tb_records').delete().eq('rec_id', recId)
   }
 
   async function updatePriority(recId: string, priority: number) {
+    setRecords(prev => prev.map(r =>
+      r.rec_id === recId ? { ...r, rec_priority: priority } : r
+    ))
     await supabase.from('tb_records').update({ rec_priority: priority }).eq('rec_id', recId)
   }
 
