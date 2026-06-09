@@ -346,6 +346,49 @@ FROM tb_records WHERE rec_code = 'RB-003-EV-001';
 
 -----
 
+## Memoria condivisa tra le chat
+
+**Taskboard (Supabase) è la memoria persistente condivisa tra tutte le conversazioni.**
+Ogni chat di claude.ai nasce isolata: ciò che NON è registrato su Taskboard non è
+recuperabile altrove. Quindi:
+
+### In lettura — ricostruire lo storico prima di rispondere
+
+Quando l'utente fa una domanda riferita a un progetto o a qualcosa registrato altrove
+(un'altra chat, il bot, la web app), PRIMA di rispondere interrogare Supabase per
+ricostruire la storia completa del progetto:
+
+```sql
+SELECT r.rec_code, r.rec_kind, r.rec_status, r.rec_title, r.rec_body,
+       r.rec_created_at, r.rec_done_at,
+       json_agg(
+         json_build_object('kind', i.item_kind, 'text', i.item_text, 'done', i.item_done)
+         ORDER BY i.item_created_at
+       ) FILTER (WHERE i.item_id IS NOT NULL) AS aggiornamenti
+FROM tb_records r
+LEFT JOIN tb_record_items i ON i.item_parent_id = r.rec_id
+WHERE r.rec_prj_code = 'RB-003'        -- oppure: JOIN tb_projects ... WHERE prj_label ILIKE '%naro%'
+GROUP BY r.rec_id
+ORDER BY r.rec_created_at DESC;
+```
+
+Questo include task, memo, eventi (ogni stato: aperto/chiuso/archiviato) e i loro
+sub-task/aggiornamenti. È la base su cui ragionare.
+
+### In scrittura — write-back delle informazioni importanti
+
+Quando in chat emerge un'informazione rilevante che NON è un task esplicito (una decisione,
+un dato di cantiere, un esito di sopralluogo, un accordo), **proporre di registrarla come
+Memo del progetto** e salvarla SOLO dopo conferma dell'utente:
+
+> "Vuoi che lo registri come memo del progetto RB-003?"
+
+Modalità concordata: **salva ma conferma prima**. Così l'informazione resta richiamabile
+nelle chat successive. Non salvare automaticamente senza conferma; non ignorare informazioni
+rilevanti senza proporne il salvataggio.
+
+-----
+
 ## Note tecniche
 
 - Il database è condiviso con Family Budget e Portfolio Manager — usare SEMPRE il prefisso `tb_`
