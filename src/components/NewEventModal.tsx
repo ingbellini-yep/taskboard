@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useProjects } from '../hooks/useProjects'
 import type { Calendar } from '../lib/googleCalendar'
-import { SyncToGoogleModal } from './SyncToGoogleModal'
+import {
+  ensureSignedIn, resolveDefaultCalendarId, createGoogleEvent, setPreferredCalendarId,
+} from '../lib/googleCalendar'
 
 interface Props {
   isGoogleAuthenticated: boolean
@@ -11,15 +13,7 @@ interface Props {
   onClose: () => void
 }
 
-interface SavedEvent {
-  recId: string
-  recTitle: string
-  recCode: string | null
-  eventStart: string
-  eventEnd: string | null
-}
-
-export function NewEventModal({ isGoogleAuthenticated, googleCalendars, defaultDate, onClose }: Props) {
+export function NewEventModal({ defaultDate, onClose }: Props) {
   const { projects } = useProjects()
   const titleRef = useRef<HTMLInputElement>(null)
 
@@ -31,8 +25,9 @@ export function NewEventModal({ isGoogleAuthenticated, googleCalendars, defaultD
   const [allDay, setAllDay] = useState(false)
   const [body, setBody] = useState('')
   const [prjId, setPrjId] = useState('')
+  const [syncGoogle, setSyncGoogle] = useState(true)   // ON di default
   const [saving, setSaving] = useState(false)
-  const [savedEvent, setSavedEvent] = useState<SavedEvent | null>(null)
+  const [warning, setWarning] = useState<string | null>(null)
 
   useEffect(() => {
     titleRef.current?.focus()
@@ -44,9 +39,10 @@ export function NewEventModal({ isGoogleAuthenticated, googleCalendars, defaultD
   async function handleSave() {
     if (!title.trim() || saving) return
     setSaving(true)
+    setWarning(null)
 
     const eventStart = allDay ? `${date}T00:00:00` : `${date}T${timeStart}:00`
-    const eventEnd = allDay ? null : `${date}T${timeEnd}:00`
+    const eventEnd = allDay ? `${date}T23:59:00` : `${date}T${timeEnd}:00`
     const selectedPrj = projects.find(p => p.prj_id === prjId)
 
     const payload: Record<string, unknown> = {
@@ -56,7 +52,7 @@ export function NewEventModal({ isGoogleAuthenticated, googleCalendars, defaultD
       rec_bucket: selectedPrj ? 'project' : 'inbox',
       rec_priority: 2,
       rec_event_start: eventStart,
-      rec_event_end: eventEnd,
+      rec_event_end: allDay ? null : eventEnd,
       rec_body: body.trim() || null,
     }
 
@@ -67,41 +63,51 @@ export function NewEventModal({ isGoogleAuthenticated, googleCalendars, defaultD
       payload.rec_ws_code = selectedPrj.prj_ws_code
     }
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('tb_records')
       .insert(payload)
       .select('rec_id, rec_code')
       .single()
 
-    setSaving(false)
-
-    if (data && isGoogleAuthenticated && !allDay && googleCalendars.length > 0) {
-      setSavedEvent({
-        recId: data.rec_id,
-        recTitle: title.trim(),
-        recCode: data.rec_code,
-        eventStart,
-        eventEnd,
-      })
-    } else {
-      onClose()
+    if (error || !data) {
+      setSaving(false)
+      setWarning('Errore nel salvataggio dell\'evento.')
+      return
     }
-  }
 
-  // After saving: show sync modal if authenticated
-  if (savedEvent) {
-    return (
-      <SyncToGoogleModal
-        recId={savedEvent.recId}
-        recTitle={savedEvent.recTitle}
-        recCode={savedEvent.recCode}
-        eventStart={savedEvent.eventStart}
-        eventEnd={savedEvent.eventEnd}
-        calendars={googleCalendars}
-        onDone={onClose}
-        onSkip={onClose}
-      />
-    )
+    // Sync Google Calendar (non bloccante): login al volo se necessario
+    if (syncGoogle) {
+      try {
+        await ensureSignedIn()
+        const calId = await resolveDefaultCalendarId()
+        setPreferredCalendarId(calId)
+        const googleId = await createGoogleEvent(calId, {
+          summary: title.trim(),
+          description: [data.rec_code ? `Taskboard: ${data.rec_code}` : null, body.trim() || null]
+            .filter(Boolean).join('\n') || undefined,
+          start: eventStart,
+          end: eventEnd,
+          allDay,
+        })
+        await supabase
+          .from('tb_records')
+          .update({ rec_google_event_id: googleId })
+          .eq('rec_id', data.rec_id)
+      } catch (e: unknown) {
+        // Non bloccante: l'evento è già salvato su Supabase
+        setSaving(false)
+        setWarning(
+          'Evento salvato, ma sync Google fallito: ' +
+          (e instanceof Error ? e.message : 'errore sconosciuto')
+        )
+        // Chiude comunque dopo un attimo così l'utente vede l'avviso
+        setTimeout(onClose, 2200)
+        return
+      }
+    }
+
+    setSaving(false)
+    onClose()
   }
 
   return (
@@ -203,9 +209,35 @@ export function NewEventModal({ isGoogleAuthenticated, googleCalendars, defaultD
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
           />
 
-          {isGoogleAuthenticated && !allDay && (
-            <p className="text-xs text-blue-600">
-              📅 Dopo il salvataggio potrai aggiungere l'evento a Google Calendar
+          {/* Toggle sync Google Calendar */}
+          <label className="flex items-center gap-2.5 cursor-pointer select-none">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={syncGoogle}
+              onClick={() => setSyncGoogle(s => !s)}
+              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
+                syncGoogle ? 'bg-blue-600' : 'bg-gray-300'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  syncGoogle ? 'translate-x-4' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+            <span className="text-sm text-gray-700">📅 Aggiungi a Google Calendar</span>
+          </label>
+
+          {syncGoogle && (
+            <p className="text-xs text-gray-400 -mt-2">
+              Se non sei connesso, ti verrà chiesto l'accesso Google al salvataggio.
+            </p>
+          )}
+
+          {warning && (
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              ⚠️ {warning}
             </p>
           )}
         </div>
@@ -226,7 +258,7 @@ export function NewEventModal({ isGoogleAuthenticated, googleCalendars, defaultD
             {saving ? (
               <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
             ) : (
-              'Salva evento'
+              syncGoogle ? 'Salva + Google 📅' : 'Salva evento'
             )}
           </button>
         </div>

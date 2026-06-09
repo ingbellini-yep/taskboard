@@ -39,6 +39,32 @@ export async function signInWithGoogle(): Promise<string> {
   })
 }
 
+/** Garantisce un token valido: se non c'è, lancia il login Google. */
+export async function ensureSignedIn(): Promise<string> {
+  const existing = getAccessToken()
+  if (existing) return existing
+  return signInWithGoogle()
+}
+
+const PREF_CAL_KEY = 'tb_google_pref_calendar'
+
+/** Ricorda l'ultimo calendario usato (id pubblico, non sensibile). */
+export function getPreferredCalendarId(): string | null {
+  try { return localStorage.getItem(PREF_CAL_KEY) } catch { return null }
+}
+export function setPreferredCalendarId(calId: string): void {
+  try { localStorage.setItem(PREF_CAL_KEY, calId) } catch { /* ignore */ }
+}
+
+/** Restituisce l'id del calendario da usare di default: preferito salvato, primary, o primo. */
+export async function resolveDefaultCalendarId(): Promise<string> {
+  const pref = getPreferredCalendarId()
+  const cals = await fetchCalendarList()
+  if (pref && cals.some(c => c.id === pref)) return pref
+  const primary = cals.find(c => c.primary)
+  return primary?.id ?? cals[0]?.id ?? 'primary'
+}
+
 export function signOutGoogle(): void {
   const token = getAccessToken()
   if (token) {
@@ -103,17 +129,34 @@ export async function createGoogleEvent(
     start: string
     end: string
     location?: string
+    allDay?: boolean
   }
 ): Promise<string> {
   const token = getAccessToken()
   if (!token) throw new Error('Non autenticato con Google Calendar')
 
+  let startField: Record<string, string>
+  let endField: Record<string, string>
+
+  if (event.allDay) {
+    // Eventi tutto-il-giorno: Google usa { date: 'YYYY-MM-DD' }, end esclusivo (giorno dopo)
+    const startDate = event.start.slice(0, 10)
+    const d = new Date(startDate + 'T00:00:00')
+    d.setDate(d.getDate() + 1)
+    const endDate = d.toISOString().slice(0, 10)
+    startField = { date: startDate }
+    endField = { date: endDate }
+  } else {
+    startField = { dateTime: event.start, timeZone: 'Europe/Rome' }
+    endField = { dateTime: event.end, timeZone: 'Europe/Rome' }
+  }
+
   const body = {
     summary: event.summary,
     description: event.description,
     location: event.location,
-    start: { dateTime: event.start, timeZone: 'Europe/Rome' },
-    end: { dateTime: event.end, timeZone: 'Europe/Rome' },
+    start: startField,
+    end: endField,
   }
 
   const res = await fetch(
