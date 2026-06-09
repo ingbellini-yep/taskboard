@@ -3,12 +3,13 @@ import type { TbRecord } from '../types'
 import {
   kindLabel, formatDate, formatDateTime, dueDateLabel, isOverdue, statusLabel,
 } from '../utils/format'
-import { closeRecord, deleteRecord, archiveRecord } from '../hooks/useRecords'
+import { closeRecord, deleteRecord, archiveRecord, restoreRecord } from '../hooks/useRecords'
 import { CloseTaskModal } from './CloseTaskModal'
 import { DeleteMemoModal } from './DeleteMemoModal'
 import { ReassignTaskModal } from './ReassignTaskModal'
 import { SubtaskSection } from './SubtaskSection'
 import { UpdatesTimeline } from './UpdatesTimeline'
+import { EditEventModal } from './EditEventModal'
 
 interface Props {
   record: TbRecord
@@ -44,6 +45,7 @@ export function RecordDetailModal({ record: r, onClose }: Props) {
   const [showCloseModal, setShowCloseModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showReassignModal, setShowReassignModal] = useState(false)
+  const [showEditEvent, setShowEditEvent] = useState(false)
 
   const wsColor = r.ws_color ?? '#718096'
   const overdue = isOverdue(r.rec_due_date)
@@ -68,6 +70,11 @@ export function RecordDetailModal({ record: r, onClose }: Props) {
 
   async function handleArchive() {
     await archiveRecord(r.rec_id)
+    onClose()
+  }
+
+  async function handleRestore() {
+    await restoreRecord(r.rec_id)
     onClose()
   }
 
@@ -100,6 +107,15 @@ export function RecordDetailModal({ record: r, onClose }: Props) {
         recCode={r.rec_code ?? null}
         onDone={onClose}
         onCancel={() => setShowReassignModal(false)}
+      />
+    )
+  }
+  if (showEditEvent) {
+    return (
+      <EditEventModal
+        record={r}
+        onDone={onClose}
+        onCancel={() => setShowEditEvent(false)}
       />
     )
   }
@@ -257,8 +273,8 @@ export function RecordDetailModal({ record: r, onClose }: Props) {
             </div>
           )}
 
-          {/* Aggiornamenti (solo Memo) */}
-          {r.rec_kind === 'M' && (
+          {/* Aggiornamenti (Memo ed Eventi — es. presenti al sopralluogo, stato di fatto) */}
+          {(r.rec_kind === 'M' || r.rec_kind === 'EV') && (
             <div className="pt-1 border-t border-gray-100">
               <UpdatesTimeline parentId={r.rec_id} />
             </div>
@@ -278,9 +294,50 @@ export function RecordDetailModal({ record: r, onClose }: Props) {
         </div>
 
         {/* Footer con azioni */}
-        {(r.rec_kind === 'T' || r.rec_kind === 'M') && (
-          <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-100 bg-gray-50">
-            {r.rec_kind === 'T' && (
+        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-100 bg-gray-50">
+            {/* Record archiviato: solo ripristina + elimina */}
+            {r.rec_status === 'archiviato' && (
+              <>
+                <button
+                  onClick={handleRestore}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-gray-200 bg-white rounded-lg hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 text-gray-500 transition-colors"
+                >
+                  ↩️ Ripristina
+                </button>
+                <button
+                  onClick={() => setShowDeleteModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-gray-200 bg-white rounded-lg hover:bg-red-50 hover:border-red-300 hover:text-red-700 text-gray-500 transition-colors"
+                >
+                  🗑 Elimina
+                </button>
+              </>
+            )}
+
+            {/* Evento (non archiviato): modifica / archivia / elimina */}
+            {r.rec_kind === 'EV' && r.rec_status !== 'archiviato' && (
+              <>
+                <button
+                  onClick={() => setShowEditEvent(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-gray-200 bg-white rounded-lg hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 text-gray-500 transition-colors"
+                >
+                  ✏️ Modifica
+                </button>
+                <button
+                  onClick={handleArchive}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-gray-200 bg-white rounded-lg hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 text-gray-500 transition-colors"
+                >
+                  📁 Archivia
+                </button>
+                <button
+                  onClick={() => setShowDeleteModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-gray-200 bg-white rounded-lg hover:bg-red-50 hover:border-red-300 hover:text-red-700 text-gray-500 transition-colors"
+                >
+                  🗑 Elimina
+                </button>
+              </>
+            )}
+
+            {r.rec_kind === 'T' && r.rec_status !== 'archiviato' && (
               <>
                 <button
                   onClick={() => setShowCloseModal(true)}
@@ -302,7 +359,7 @@ export function RecordDetailModal({ record: r, onClose }: Props) {
                 </button>
               </>
             )}
-            {r.rec_kind === 'M' && (
+            {r.rec_kind === 'M' && r.rec_status !== 'archiviato' && (
               <>
                 <button
                   onClick={handleArchive}
@@ -319,7 +376,6 @@ export function RecordDetailModal({ record: r, onClose }: Props) {
               </>
             )}
           </div>
-        )}
       </div>
     </div>
   )

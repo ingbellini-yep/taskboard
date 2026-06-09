@@ -318,6 +318,34 @@ VALUES ('UUID_PADRE', 'update', 'Ricevuta conferma via PEC il 31/05');
 
 -----
 
+## Eventi (EV) — note e aggiornamenti
+
+Gli eventi sono record di prima classe come task e memo:
+
+- Hanno un campo **note** (`rec_body`) per registrare lo stato di fatto, l'esito,
+  i presenti a un sopralluogo, ecc.
+- Possono avere **aggiornamenti cronologici** in `tb_record_items` (`item_kind='update'`),
+  utili per annotare progressivamente cosa emerge (es. "Presenti: Rossi, Bianchi" →
+  "Concordato sopralluogo di verifica il 15/06").
+- Possono essere **archiviati** (anche prima della scadenza) → `rec_status='archiviato'`,
+  così escono dal calendario ma restano consultabili negli Archiviati.
+- Sono **modificabili** (data, ora, progetto, note) dalla scheda dettaglio.
+
+### Aggiungere note/aggiornamenti a un evento via MCP
+
+```sql
+-- Note inline (sovrascrive il campo)
+UPDATE tb_records SET rec_body = 'Sopralluogo: presenti Rossi e Bianchi. Stato di fatto OK.'
+WHERE rec_code = 'RB-003-EV-001';
+
+-- Aggiornamento cronologico (append, non sovrascrive)
+INSERT INTO tb_record_items (item_parent_id, item_kind, item_text)
+SELECT rec_id, 'update', 'Concordato secondo sopralluogo il 15/06'
+FROM tb_records WHERE rec_code = 'RB-003-EV-001';
+```
+
+-----
+
 ## Note tecniche
 
 - Il database è condiviso con Family Budget e Portfolio Manager — usare SEMPRE il prefisso `tb_`

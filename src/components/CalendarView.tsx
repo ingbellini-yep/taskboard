@@ -2,7 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useGoogleCalendar } from '../hooks/useGoogleCalendar'
 import { NewEventModal } from './NewEventModal'
+import { RecordDetailModal } from './RecordDetailModal'
 import type { GoogleEvent } from '../lib/googleCalendar'
+import type { TbRecord } from '../types'
 
 /* ─── Tipi ─────────────────────────────────────────────── */
 
@@ -105,6 +107,30 @@ export function CalendarView() {
   const [currentMonth, setCurrentMonth] = useState(() => monthStart(new Date()))
   const [tbEvents, setTbEvents] = useState<TbEvent[]>([])
   const [showNewEvent, setShowNewEvent] = useState(false)
+  const [selectedRecord, setSelectedRecord] = useState<TbRecord | null>(null)
+
+  // Click su evento Taskboard → carica il record completo e apre la scheda dettaglio
+  const openTbRecord = useCallback(async (tbId: string) => {
+    const { data } = await supabase
+      .from('tb_records')
+      .select(`
+        *,
+        tb_projects!rec_prj_id ( prj_label ),
+        tb_workspaces!rec_ws_id ( ws_label, ws_color, ws_icon )
+      `)
+      .eq('rec_id', tbId)
+      .single()
+    if (data) {
+      const rec = {
+        ...data,
+        prj_label: (data.tb_projects as { prj_label: string } | null)?.prj_label ?? null,
+        ws_label: (data.tb_workspaces as { ws_label: string } | null)?.ws_label ?? null,
+        ws_color: (data.tb_workspaces as { ws_color: string } | null)?.ws_color ?? null,
+        ws_icon: (data.tb_workspaces as { ws_icon: string } | null)?.ws_icon ?? null,
+      } as TbRecord
+      setSelectedRecord(rec)
+    }
+  }, [])
 
   const tMin = monthStart(currentMonth)
   const tMax = monthEnd(currentMonth)
@@ -286,12 +312,12 @@ export function CalendarView() {
 
       {/* Vista Lista */}
       {viewMode === 'lista' && (
-        <ListaView sortedDays={sortedDays} byDay={byDay} />
+        <ListaView sortedDays={sortedDays} byDay={byDay} onSelectTb={openTbRecord} />
       )}
 
       {/* Vista Griglia */}
       {viewMode === 'griglia' && (
-        <GrigliaView currentMonth={currentMonth} byDay={byDay} />
+        <GrigliaView currentMonth={currentMonth} byDay={byDay} onSelectTb={openTbRecord} />
       )}
 
       {/* Modali */}
@@ -302,13 +328,24 @@ export function CalendarView() {
           onClose={() => { setShowNewEvent(false); loadTb() }}
         />
       )}
+
+      {selectedRecord && (
+        <RecordDetailModal
+          record={selectedRecord}
+          onClose={() => { setSelectedRecord(null); loadTb() }}
+        />
+      )}
     </div>
   )
 }
 
 /* ─── Vista Lista ───────────────────────────────────────── */
 
-function ListaView({ sortedDays, byDay }: { sortedDays: string[]; byDay: Map<string, UnifiedEvent[]> }) {
+function ListaView({ sortedDays, byDay, onSelectTb }: {
+  sortedDays: string[]
+  byDay: Map<string, UnifiedEvent[]>
+  onSelectTb: (tbId: string) => void
+}) {
   if (sortedDays.length === 0) {
     return (
       <div className="text-center py-16 text-gray-400">
@@ -343,7 +380,7 @@ function ListaView({ sortedDays, byDay }: { sortedDays: string[]; byDay: Map<str
             {/* Eventi del giorno */}
             <div className="flex flex-col gap-1.5 ml-4">
               {events.map(ev => (
-                <EventRow key={ev.id} ev={ev} />
+                <EventRow key={ev.id} ev={ev} onSelectTb={onSelectTb} />
               ))}
             </div>
           </div>
@@ -353,10 +390,15 @@ function ListaView({ sortedDays, byDay }: { sortedDays: string[]; byDay: Map<str
   )
 }
 
-function EventRow({ ev }: { ev: UnifiedEvent }) {
+function EventRow({ ev, onSelectTb }: { ev: UnifiedEvent; onSelectTb?: (tbId: string) => void }) {
+  const isTb = ev.source === 'taskboard'
+  const tbId = isTb ? ev.id.replace(/^tb-/, '') : null
   return (
     <div
-      className="flex items-start gap-3 bg-white border border-gray-100 rounded-lg px-3 py-2.5 shadow-sm"
+      onClick={isTb && onSelectTb && tbId ? () => onSelectTb(tbId) : undefined}
+      className={`flex items-start gap-3 bg-white border border-gray-100 rounded-lg px-3 py-2.5 shadow-sm transition-all ${
+        isTb ? 'cursor-pointer hover:border-gray-300 hover:shadow-md' : ''
+      }`}
       style={{ borderLeftColor: ev.color, borderLeftWidth: 3 }}
     >
       {/* Orario */}
@@ -402,7 +444,11 @@ function EventRow({ ev }: { ev: UnifiedEvent }) {
 
 /* ─── Vista Griglia ─────────────────────────────────────── */
 
-function GrigliaView({ currentMonth, byDay }: { currentMonth: Date; byDay: Map<string, UnifiedEvent[]> }) {
+function GrigliaView({ currentMonth, byDay, onSelectTb }: {
+  currentMonth: Date
+  byDay: Map<string, UnifiedEvent[]>
+  onSelectTb: (tbId: string) => void
+}) {
   const [expandedDay, setExpandedDay] = useState<string | null>(null)
   const year = currentMonth.getFullYear()
   const month = currentMonth.getMonth()
@@ -496,7 +542,7 @@ function GrigliaView({ currentMonth, byDay }: { currentMonth: Date; byDay: Map<s
           </div>
           <div className="flex flex-col gap-1.5">
             {byDay.get(expandedDay)!.map(ev => (
-              <EventRow key={ev.id} ev={ev} />
+              <EventRow key={ev.id} ev={ev} onSelectTb={onSelectTb} />
             ))}
           </div>
         </div>
