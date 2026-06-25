@@ -52,6 +52,12 @@ function PriBadge({ priority }: { priority: number }) {
 
 // ─── Due date label ───────────────────────────────────────────────────────────
 
+function formatDoneDate(iso: string): string {
+  const d = new Date(iso)
+  return d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
+    ' ' + d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
+}
+
 function DueLabel({ date }: { date: string | null }) {
   if (!date) return null
   const d = new Date(date)
@@ -150,8 +156,9 @@ function AddForm({ onAdd }: AddFormProps) {
 
 // ─── Lista rapida ─────────────────────────────────────────────────────────────
 
-function ListaView({ records, onToggle, onDelete, onAdd }: {
+function ListaView({ records, showAddForm = true, onToggle, onDelete, onAdd }: {
   records: TbRecord[]
+  showAddForm?: boolean
   onToggle: (r: TbRecord) => void
   onDelete: (id: string) => void
   onAdd: AddFormProps['onAdd']
@@ -161,20 +168,22 @@ function ListaView({ records, onToggle, onDelete, onAdd }: {
 
   return (
     <div className="flex flex-col gap-2">
-      <AddForm onAdd={onAdd} />
+      {showAddForm && <AddForm onAdd={onAdd} />}
       {open.map(r => (
         <ListRow key={r.rec_id} record={r} onToggle={onToggle} onDelete={onDelete} />
       ))}
       {done.length > 0 && (
         <>
-          <div className="text-xs text-gray-400 uppercase tracking-wide mt-3 mb-1">Completati ({done.length})</div>
+          {open.length > 0 && (
+            <div className="text-xs text-gray-400 uppercase tracking-wide mt-3 mb-1">Completati ({done.length})</div>
+          )}
           {done.map(r => (
             <ListRow key={r.rec_id} record={r} onToggle={onToggle} onDelete={onDelete} done />
           ))}
         </>
       )}
       {records.length === 0 && (
-        <div className="text-center py-12 text-gray-400 text-sm">Nessun task. Aggiungine uno!</div>
+        <div className="text-center py-12 text-gray-400 text-sm">Nessun task.</div>
       )}
     </div>
   )
@@ -200,11 +209,17 @@ function ListRow({ record: r, onToggle, onDelete, done = false }: {
         <span className={`text-sm ${done ? 'line-through text-gray-400' : 'text-gray-900'}`}>
           {r.rec_title}
         </span>
-        {!done && (
+        {!done ? (
           <div className="flex items-center gap-2 mt-0.5">
             <PriBadge priority={r.rec_priority} />
             <DueLabel date={r.rec_due_date} />
           </div>
+        ) : (
+          r.rec_done_at && (
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-xs text-green-600">✓ Completato il {formatDoneDate(r.rec_done_at)}</span>
+            </div>
+          )
         )}
       </div>
       <CatBadge code={r.rec_ws_code} />
@@ -427,13 +442,19 @@ export function SmallTasksView() {
     return sortSmall(r, sort)
   }, [records, filterCats, filterPriority, filterStatus, sort])
 
-  // Per la lista: aperti sempre in cima, chiusi in fondo anche se filterStatus=tutti
-  const filteredAll = useMemo(() => {
+  // Per la lista: applica cat/priorità + stato; gli aperti vanno in cima, i chiusi in fondo (ListaView)
+  const filteredList = useMemo(() => {
     let r = records
     if (filterCats.size > 0) r = r.filter(x => filterCats.has(x.rec_ws_code ?? '__none__'))
     if (filterPriority !== null) r = r.filter(x => x.rec_priority === filterPriority)
+    if (filterStatus === 'aperti') {
+      r = r.filter(x => x.rec_status !== 'chiuso' && x.rec_status !== 'archiviato')
+    } else if (filterStatus === 'chiusi') {
+      r = r.filter(x => x.rec_status === 'chiuso')
+    }
+    // 'tutti' → nessun filtro stato
     return sortSmall(r, sort)
-  }, [records, filterCats, filterPriority, sort])
+  }, [records, filterCats, filterPriority, filterStatus, sort])
 
   function toggleCat(code: string) {
     setFilterCats(prev => {
@@ -454,7 +475,7 @@ export function SmallTasksView() {
 
   const openCount = records.filter(r => r.rec_status !== 'chiuso').length
 
-  const viewRecords = view === 'lista' ? filteredAll : filtered
+  const viewRecords = view === 'lista' ? filteredList : filtered
 
   return (
     <div className="flex flex-col gap-4">
@@ -569,7 +590,8 @@ export function SmallTasksView() {
         <LoadingState />
       ) : view === 'lista' ? (
         <ListaView
-          records={filterStatus === 'aperti' ? viewRecords.filter(r => r.rec_status !== 'chiuso') : viewRecords}
+          records={viewRecords}
+          showAddForm={filterStatus !== 'chiusi'}
           onToggle={handleToggle}
           onDelete={deleteTask}
           onAdd={addTask}
