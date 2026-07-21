@@ -6,7 +6,9 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt' (non autoUpdate): mostra il banner "Nuova versione disponibile"
+      // così su mobile l'aggiornamento è esplicito e immediato, non a discrezione dell'OS.
+      registerType: 'prompt',
       includeAssets: ['favicon.svg'],
       manifest: {
         name: 'Taskboard',
@@ -23,6 +25,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/dacekxilrahnbwwjovde\.supabase\.co\/.*/i,
