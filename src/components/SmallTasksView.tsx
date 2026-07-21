@@ -7,6 +7,9 @@ import {
   sortSmall,
 } from '../hooks/useSmallTasks'
 import type { SmallCategory, SmallSort, SmallStatus, SmallStatusFilter, SmallView } from '../hooks/useSmallTasks'
+import { RecordDetailModal } from './RecordDetailModal'
+import { EditSmallTaskModal } from './EditSmallTaskModal'
+import { ReassignSmallTaskModal } from './ReassignSmallTaskModal'
 
 // ─── Costanti ────────────────────────────────────────────────────────────────
 
@@ -195,42 +198,94 @@ function ListRow({ record: r, onToggle, onDelete, done = false }: {
   onDelete: (id: string) => void
   done?: boolean
 }) {
+  const [showEdit, setShowEdit] = useState(false)
+  const [showReassign, setShowReassign] = useState(false)
+  const [showDetail, setShowDetail] = useState(false)
+
   return (
-    <div className={`flex items-center gap-3 px-3 py-2.5 bg-white border rounded-lg group transition-all ${done ? 'border-gray-100 opacity-60' : 'border-gray-200 hover:border-gray-300'}`}>
-      <button
-        onClick={() => onToggle(r)}
-        className={`w-5 h-5 shrink-0 rounded border-2 flex items-center justify-center transition-colors ${
-          done ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 hover:border-blue-500'
-        }`}
-      >
-        {done && <span className="text-xs leading-none">✓</span>}
-      </button>
-      <div className="flex-1 min-w-0">
-        <span className={`text-sm ${done ? 'line-through text-gray-400' : 'text-gray-900'}`}>
-          {r.rec_title}
-        </span>
-        {!done ? (
-          <div className="flex items-center gap-2 mt-0.5">
-            <PriBadge priority={r.rec_priority} />
-            <DueLabel date={r.rec_due_date} />
-          </div>
-        ) : (
-          r.rec_done_at && (
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-xs text-green-600">✓ Completato il {formatDoneDate(r.rec_done_at)}</span>
+    <>
+      <div className={`flex items-start gap-3 px-3 py-2.5 bg-white border rounded-lg group transition-all ${done ? 'border-gray-100 opacity-60' : 'border-gray-200 hover:border-gray-300'}`}>
+        <button
+          onClick={() => onToggle(r)}
+          className={`w-5 h-5 mt-0.5 shrink-0 rounded border-2 flex items-center justify-center transition-colors ${
+            done ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 hover:border-blue-500'
+          }`}
+          title={done ? 'Riapri' : 'Segna come fatto'}
+        >
+          {done && <span className="text-xs leading-none">✓</span>}
+        </button>
+
+        {/* Contenuto cliccabile → scheda dettaglio completa */}
+        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setShowDetail(true)}>
+          <span className={`text-sm ${done ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+            {r.rec_title}
+          </span>
+          {/* Note (rec_body) — anteprima */}
+          {r.rec_body && !done && (
+            <p className="text-xs text-gray-500 line-clamp-2 mt-0.5 leading-relaxed">{r.rec_body}</p>
+          )}
+          {!done ? (
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+              <PriBadge priority={r.rec_priority} />
+              <DueLabel date={r.rec_due_date} />
+              {r.rec_body && <span className="text-xs text-gray-300">📝</span>}
             </div>
-          )
-        )}
+          ) : (
+            r.rec_done_at && (
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xs text-green-600">✓ Completato il {formatDoneDate(r.rec_done_at)}</span>
+              </div>
+            )
+          )}
+        </div>
+
+        <CatBadge code={r.rec_ws_code} />
+
+        {/* Azioni */}
+        <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={e => { e.stopPropagation(); setShowEdit(true) }}
+            className="text-gray-300 hover:text-blue-600 text-xs px-1"
+            title="Modifica"
+          >
+            ✏️
+          </button>
+          <button
+            onClick={e => { e.stopPropagation(); setShowReassign(true) }}
+            className="text-gray-300 hover:text-blue-600 text-xs px-1"
+            title="Assegna a progetto"
+          >
+            📂
+          </button>
+          <button
+            onClick={e => { e.stopPropagation(); onDelete(r.rec_id) }}
+            className="text-gray-300 hover:text-red-500 text-xs px-1"
+            title="Elimina"
+          >
+            ✕
+          </button>
+        </div>
       </div>
-      <CatBadge code={r.rec_ws_code} />
-      <button
-        onClick={() => onDelete(r.rec_id)}
-        className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 text-xs transition-opacity shrink-0"
-        title="Elimina"
-      >
-        ✕
-      </button>
-    </div>
+
+      {showDetail && (
+        <RecordDetailModal record={r} onClose={() => setShowDetail(false)} />
+      )}
+      {showEdit && (
+        <EditSmallTaskModal
+          record={r}
+          onDone={() => setShowEdit(false)}
+          onCancel={() => setShowEdit(false)}
+        />
+      )}
+      {showReassign && (
+        <ReassignSmallTaskModal
+          recId={r.rec_id}
+          recTitle={r.rec_title}
+          onDone={() => setShowReassign(false)}
+          onCancel={() => setShowReassign(false)}
+        />
+      )}
+    </>
   )
 }
 
@@ -314,46 +369,99 @@ function KanbanCard({ record: r, onMove, onDelete, dragging, onDragStart }: {
   dragging: boolean
   onDragStart: (e: React.DragEvent, id: string) => void
 }) {
+  const [showDetail, setShowDetail] = useState(false)
+  const [showEdit, setShowEdit] = useState(false)
+  const [showReassign, setShowReassign] = useState(false)
   const otherCols = KANBAN_COLS.filter(c => c.status !== r.rec_status)
+
   return (
-    <div
-      draggable
-      onDragStart={e => onDragStart(e, r.rec_id)}
-      className={`bg-white rounded-lg border border-gray-200 p-3 flex flex-col gap-2 shadow-sm cursor-grab active:cursor-grabbing group transition-opacity ${
-        dragging ? 'opacity-40' : 'hover:border-gray-300 hover:shadow-md'
-      }`}
-    >
-      <div className="flex items-start gap-2">
-        <span className="text-sm text-gray-900 flex-1 leading-snug">{r.rec_title}</span>
-        <button
-          onClick={() => onDelete(r.rec_id)}
-          className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 text-xs transition-opacity shrink-0"
-        >
-          ✕
-        </button>
-      </div>
-      <div className="flex items-center gap-2 flex-wrap">
-        <CatBadge code={r.rec_ws_code} />
-        <PriBadge priority={r.rec_priority} />
-        <DueLabel date={r.rec_due_date} />
-      </div>
-      {/* Move buttons */}
-      <div className="flex gap-1 pt-1 border-t border-gray-100">
-        {otherCols.map(col => (
-          <button
-            key={col.status}
-            onClick={() => onMove(r.rec_id, col.status)}
-            className="text-xs text-gray-400 hover:text-white px-2 py-0.5 rounded transition-colors hover:opacity-90"
-            style={{ ':hover': { backgroundColor: col.color } } as React.CSSProperties}
-            onMouseEnter={e => (e.currentTarget.style.backgroundColor = col.color)}
-            onMouseLeave={e => (e.currentTarget.style.backgroundColor = '')}
-            title={`Sposta in ${col.label}`}
+    <>
+      <div
+        draggable
+        onDragStart={e => onDragStart(e, r.rec_id)}
+        className={`bg-white rounded-lg border border-gray-200 p-3 flex flex-col gap-2 shadow-sm cursor-grab active:cursor-grabbing group transition-opacity ${
+          dragging ? 'opacity-40' : 'hover:border-gray-300 hover:shadow-md'
+        }`}
+      >
+        <div className="flex items-start gap-2">
+          <span
+            className="text-sm text-gray-900 flex-1 leading-snug cursor-pointer"
+            onClick={() => setShowDetail(true)}
           >
-            → {col.label}
-          </button>
-        ))}
+            {r.rec_title}
+          </span>
+          <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={e => { e.stopPropagation(); setShowEdit(true) }}
+              className="text-gray-300 hover:text-blue-600 text-xs"
+              title="Modifica"
+            >
+              ✏️
+            </button>
+            <button
+              onClick={e => { e.stopPropagation(); setShowReassign(true) }}
+              className="text-gray-300 hover:text-blue-600 text-xs"
+              title="Assegna a progetto"
+            >
+              📂
+            </button>
+            <button
+              onClick={e => { e.stopPropagation(); onDelete(r.rec_id) }}
+              className="text-gray-300 hover:text-red-500 text-xs"
+              title="Elimina"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        {/* Note (rec_body) */}
+        {r.rec_body && (
+          <p
+            className="text-xs text-gray-500 line-clamp-2 leading-relaxed cursor-pointer"
+            onClick={() => setShowDetail(true)}
+          >
+            {r.rec_body}
+          </p>
+        )}
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <CatBadge code={r.rec_ws_code} />
+          <PriBadge priority={r.rec_priority} />
+          <DueLabel date={r.rec_due_date} />
+        </div>
+        {/* Move buttons */}
+        <div className="flex gap-1 pt-1 border-t border-gray-100">
+          {otherCols.map(col => (
+            <button
+              key={col.status}
+              onClick={() => onMove(r.rec_id, col.status)}
+              className="text-xs text-gray-400 hover:text-white px-2 py-0.5 rounded transition-colors hover:opacity-90"
+              onMouseEnter={e => (e.currentTarget.style.backgroundColor = col.color)}
+              onMouseLeave={e => (e.currentTarget.style.backgroundColor = '')}
+              title={`Sposta in ${col.label}`}
+            >
+              → {col.label}
+            </button>
+          ))}
+        </div>
       </div>
-    </div>
+
+      {showDetail && (
+        <RecordDetailModal record={r} onClose={() => setShowDetail(false)} />
+      )}
+      {showEdit && (
+        <EditSmallTaskModal record={r} onDone={() => setShowEdit(false)} onCancel={() => setShowEdit(false)} />
+      )}
+      {showReassign && (
+        <ReassignSmallTaskModal
+          recId={r.rec_id}
+          recTitle={r.rec_title}
+          onDone={() => setShowReassign(false)}
+          onCancel={() => setShowReassign(false)}
+        />
+      )}
+    </>
   )
 }
 
