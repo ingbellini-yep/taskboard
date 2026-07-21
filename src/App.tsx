@@ -7,9 +7,10 @@ import { OreView } from './components/OreView'
 import { CalendarView } from './components/CalendarView'
 import { SmallTasksView } from './components/SmallTasksView'
 import { ProgettoView } from './components/ProgettoView'
+import { AcquistiView } from './components/AcquistiView'
 import { useStats } from './hooks/useStats'
 
-type Tab = 'aperti' | 'inbox' | 'completati' | 'archiviati' | 'ore' | 'calendario' | 'small' | 'progetto'
+type Tab = 'aperti' | 'inbox' | 'completati' | 'archiviati' | 'ore' | 'calendario' | 'small' | 'progetto' | 'acquisti'
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('aperti')
@@ -90,6 +91,9 @@ export default function App() {
           <TabButton active={tab === 'progetto'} onClick={() => setTab('progetto')}>
             📂 Progetto
           </TabButton>
+          <TabButton active={tab === 'acquisti'} onClick={() => setTab('acquisti')}>
+            🛒 Acquisti
+          </TabButton>
         </div>
       </div>
 
@@ -103,6 +107,7 @@ export default function App() {
         {tab === 'calendario' && <CalendarView />}
         {tab === 'small' && <SmallTasksView />}
         {tab === 'progetto' && <ProgettoView />}
+        {tab === 'acquisti' && <AcquistiView />}
       </main>
     </div>
   )

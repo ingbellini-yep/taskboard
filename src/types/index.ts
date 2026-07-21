@@ -27,6 +27,47 @@ export interface Project {
   prj_updated_at: string
 }
 
+export type PurchaseStatus = 'da_valutare' | 'preventivi' | 'approvato' | 'acquistato' | 'annullato'
+
+export interface TbPurchase {
+  pur_id: string
+  pur_code: string | null
+  pur_title: string
+  pur_ws_code: WorkspaceCode | null
+  pur_ws_id: string | null
+  pur_prj_id: string | null
+  pur_prj_code: string | null
+  pur_status: PurchaseStatus
+  pur_priority: number
+  pur_est_amount: number | null
+  pur_final_amount: number | null
+  pur_target_date: string | null
+  pur_purchase_date: string | null
+  pur_vendor: string | null
+  pur_warranty_months: number | null
+  pur_warranty_until: string | null
+  pur_invoice_ref: string | null
+  pur_deductible: boolean
+  pur_url: string | null
+  pur_notes: string | null
+  pur_created_at: string
+  pur_updated_at: string
+  // joined
+  prj_label?: string | null
+}
+
+export interface TbPurchaseQuote {
+  quo_id: string
+  quo_pur_id: string
+  quo_vendor: string
+  quo_amount: number
+  quo_url: string | null
+  quo_notes: string | null
+  quo_selected: boolean
+  quo_date: string | null
+  quo_created_at: string
+}
+
 export type RecordItemKind = 'subtask' | 'update'
 
 export interface TbRecordItem {
