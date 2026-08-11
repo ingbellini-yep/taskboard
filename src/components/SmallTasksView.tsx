@@ -243,20 +243,32 @@ function ListRow({ record: r, onToggle, onDelete, done = false }: {
 
         {/* Azioni */}
         <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            onClick={e => { e.stopPropagation(); setShowEdit(true) }}
-            className="text-gray-300 hover:text-blue-600 text-xs px-1"
-            title="Modifica"
-          >
-            ✏️
-          </button>
-          <button
-            onClick={e => { e.stopPropagation(); setShowReassign(true) }}
-            className="text-gray-300 hover:text-blue-600 text-xs px-1"
-            title="Assegna a progetto"
-          >
-            📂
-          </button>
+          {done ? (
+            <button
+              onClick={e => { e.stopPropagation(); onToggle(r) }}
+              className="text-xs text-blue-600 hover:text-blue-800 font-medium px-1.5 py-0.5 rounded hover:bg-blue-50"
+              title="Riapri task"
+            >
+              ↩ Riapri
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={e => { e.stopPropagation(); setShowEdit(true) }}
+                className="text-gray-300 hover:text-blue-600 text-xs px-1"
+                title="Modifica"
+              >
+                ✏️
+              </button>
+              <button
+                onClick={e => { e.stopPropagation(); setShowReassign(true) }}
+                className="text-gray-300 hover:text-blue-600 text-xs px-1"
+                title="Assegna a progetto"
+              >
+                📂
+              </button>
+            </>
+          )}
           <button
             onClick={e => { e.stopPropagation(); onDelete(r.rec_id) }}
             className="text-gray-300 hover:text-red-500 text-xs px-1"
