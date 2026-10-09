@@ -10,6 +10,7 @@ import { ReassignTaskModal } from './ReassignTaskModal'
 import { SubtaskSection } from './SubtaskSection'
 import { UpdatesTimeline } from './UpdatesTimeline'
 import { EditEventModal } from './EditEventModal'
+import { EditRecordModal } from './EditRecordModal'
 
 interface Props {
   record: TbRecord
@@ -46,6 +47,7 @@ export function RecordDetailModal({ record: r, onClose }: Props) {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [showReassignModal, setShowReassignModal] = useState(false)
   const [showEditEvent, setShowEditEvent] = useState(false)
+  const [showEditRecord, setShowEditRecord] = useState(false)
 
   const wsColor = r.ws_color ?? '#718096'
   const overdue = isOverdue(r.rec_due_date)
@@ -107,6 +109,15 @@ export function RecordDetailModal({ record: r, onClose }: Props) {
         recCode={r.rec_code ?? null}
         onDone={onClose}
         onCancel={() => setShowReassignModal(false)}
+      />
+    )
+  }
+  if (showEditRecord) {
+    return (
+      <EditRecordModal
+        record={r}
+        onDone={onClose}
+        onCancel={() => setShowEditRecord(false)}
       />
     )
   }
@@ -340,6 +351,12 @@ export function RecordDetailModal({ record: r, onClose }: Props) {
             {r.rec_kind === 'T' && r.rec_status !== 'archiviato' && (
               <>
                 <button
+                  onClick={() => setShowEditRecord(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-gray-200 bg-white rounded-lg hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 text-gray-500 transition-colors"
+                >
+                  ✏️ Modifica
+                </button>
+                <button
                   onClick={() => setShowCloseModal(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-gray-200 bg-white rounded-lg hover:bg-green-50 hover:border-green-300 hover:text-green-700 text-gray-500 transition-colors"
                 >
@@ -349,7 +366,7 @@ export function RecordDetailModal({ record: r, onClose }: Props) {
                   onClick={() => setShowReassignModal(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-gray-200 bg-white rounded-lg hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 text-gray-500 transition-colors"
                 >
-                  ✏️ Riattribuisci
+                  📂 Riattribuisci
                 </button>
                 <button
                   onClick={() => setShowDeleteModal(true)}
@@ -361,6 +378,12 @@ export function RecordDetailModal({ record: r, onClose }: Props) {
             )}
             {r.rec_kind === 'M' && r.rec_status !== 'archiviato' && (
               <>
+                <button
+                  onClick={() => setShowEditRecord(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-gray-200 bg-white rounded-lg hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 text-gray-500 transition-colors"
+                >
+                  ✏️ Modifica
+                </button>
                 <button
                   onClick={handleArchive}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-gray-200 bg-white rounded-lg hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 text-gray-500 transition-colors"
