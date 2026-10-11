@@ -4,6 +4,7 @@ import { useWorkspaces } from '../hooks/useWorkspaces'
 import { useProjectRecords } from '../hooks/useProjectRecords'
 import { RecordDetailModal } from './RecordDetailModal'
 import { ProjectTree } from './ProjectTree'
+import { NewProjectModal } from './NewProjectModal'
 import { kindLabel, dueDateLabel, isOverdue } from '../utils/format'
 import { buildTree, treeToText } from '../lib/recordTree'
 import { exportProjectDocx, downloadBlob } from '../lib/exportProjectDocx'
@@ -148,9 +149,10 @@ type KindFilter = 'all' | 'T' | 'M' | 'EV'
 type ViewMode = 'elenco' | 'albero' | 'testo'
 
 export function ProgettoView({ initialPrjId }: { initialPrjId?: string | null } = {}) {
-  const { projects, loading: projLoading } = useProjects()
+  const { projects, loading: projLoading, refetch: refetchProjects } = useProjects()
   const { workspaces } = useWorkspaces()
   const [selectedPrjId, setSelectedPrjId] = useState<string | null>(initialPrjId ?? null)
+  const [showNewProject, setShowNewProject] = useState(false)
   const [filterKind, setFilterKind] = useState<KindFilter>('all')
   const [filterText, setFilterText] = useState('')
   const [view, setView] = useState<ViewMode>('elenco')
@@ -285,7 +287,25 @@ export function ProgettoView({ initialPrjId }: { initialPrjId?: string | null } 
               </optgroup>
             ))}
           </select>
+          <button
+            onClick={() => setShowNewProject(true)}
+            className="shrink-0 bg-blue-700 hover:bg-blue-800 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors print:hidden"
+          >
+            + Nuovo progetto
+          </button>
         </div>
+
+        {showNewProject && (
+          <NewProjectModal
+            onCreated={async prjId => {
+              setShowNewProject(false)
+              await refetchProjects()
+              setSelectedPrjId(prjId)
+              setFilterText('')
+            }}
+            onCancel={() => setShowNewProject(false)}
+          />
+        )}
 
         {/* Info progetto selezionato */}
         {selectedProject && (
