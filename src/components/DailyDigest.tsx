@@ -132,6 +132,11 @@ export function DailyDigest() {
     </button>
   )
 
+  // Mentre la scheda dettaglio è aperta la splash si nasconde (altrimenti resterebbe sopra, z-55 > z-50)
+  if (detail) {
+    return <RecordDetailModal record={detail} onClose={() => setDetail(null)} />
+  }
+
   return (
     <>
       <div className="fixed inset-0 z-[55] flex items-center justify-center bg-black/50 px-4" onClick={e => { if (e.target === e.currentTarget) close() }}>
@@ -183,7 +188,6 @@ export function DailyDigest() {
           </div>
         </div>
       </div>
-      {detail && <RecordDetailModal record={detail} onClose={() => setDetail(null)} />}
     </>
   )
 }
