@@ -1,18 +1,21 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { TbRecord } from '../types'
 
 /**
  * Recupera TUTTI i record di un progetto (qualsiasi stato, tipo, bucket).
  * Usato dalla vista Progetto per mostrare la storia completa.
+ * `loading` è true solo al primo caricamento di un progetto: i refetch realtime
+ * aggiornano i dati in silenzio, senza smontare le viste (albero, modali aperti).
  */
 export function useProjectRecords(prjId: string | null) {
   const [records, setRecords] = useState<TbRecord[]>([])
   const [loading, setLoading] = useState(false)
+  const loadedFor = useRef<string | null>(null)
 
   const fetch = useCallback(async () => {
-    if (!prjId) { setRecords([]); return }
-    setLoading(true)
+    if (!prjId) { setRecords([]); loadedFor.current = null; return }
+    if (loadedFor.current !== prjId) setLoading(true)
     const { data } = await supabase
       .from('tb_records')
       .select(`
@@ -31,6 +34,7 @@ export function useProjectRecords(prjId: string | null) {
       ws_icon:   (r.tb_workspaces as { ws_label: string; ws_color: string; ws_icon: string } | null)?.ws_icon ?? null,
     })) as TbRecord[]
     setRecords(normalized)
+    loadedFor.current = prjId
     setLoading(false)
   }, [prjId])
 
