@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useProjects } from '../hooks/useProjects'
 import type { TbRecord } from '../types'
+import { ParentSelect } from './ParentSelect'
 
 interface Props {
   record: TbRecord
@@ -40,6 +41,7 @@ export function EditEventModal({ record: r, onDone, onCancel }: Props) {
   const [allDay, setAllDay] = useState(wasAllDay)
   const [body, setBody] = useState(r.rec_body ?? '')
   const [prjId, setPrjId] = useState(r.rec_prj_id ?? '')
+  const [parentId, setParentId] = useState<string | null>(r.rec_parent_id ?? null)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -62,6 +64,8 @@ export function EditEventModal({ record: r, onDone, onCancel }: Props) {
       rec_event_start: eventStart,
       rec_event_end: eventEnd,
       rec_body: body.trim() || null,
+      // il padre ha senso solo se resta nello stesso progetto
+      rec_parent_id: prjId && prjId === r.rec_prj_id ? parentId : null,
     }
 
     if (selectedPrj) {
@@ -167,6 +171,10 @@ export function EditEventModal({ record: r, onDone, onCancel }: Props) {
               ))}
             </select>
           </div>
+
+          {prjId && prjId === r.rec_prj_id && (
+            <ParentSelect record={r} value={parentId} onChange={setParentId} />
+          )}
 
           <div className="flex flex-col gap-1">
             <label className="text-xs text-gray-500">Note / stato di fatto</label>

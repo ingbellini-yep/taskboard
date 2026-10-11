@@ -28,3 +28,13 @@
     border-radius: 9999px;
   }
 }
+
+/* ─── Stampa: solo l'area marcata .print-area ─────────────────────────────── */
+@media print {
+  body * { visibility: hidden; }
+  .print-area, .print-area * { visibility: visible; }
+  .print-area { position: absolute; left: 0; top: 0; width: 100%; padding: 12mm; background: white; }
+  .print\:hidden { display: none !important; }
+  .project-tree .tree-node { break-inside: avoid; box-shadow: none; }
+  pre.tree-text { white-space: pre; font-size: 10.5pt; }
+}

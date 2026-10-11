@@ -11,6 +11,7 @@ import { SubtaskSection } from './SubtaskSection'
 import { UpdatesTimeline } from './UpdatesTimeline'
 import { EditEventModal } from './EditEventModal'
 import { EditRecordModal } from './EditRecordModal'
+import { RecordLineage } from './RecordLineage'
 
 interface Props {
   record: TbRecord
@@ -268,6 +269,9 @@ export function RecordDetailModal({ record: r, onClose }: Props) {
               ))}
             </div>
           )}
+
+          {/* Dipendenze: padre e figli */}
+          <RecordLineage record={r} />
 
           {/* Sync Google Calendar */}
           {r.rec_google_event_id && (

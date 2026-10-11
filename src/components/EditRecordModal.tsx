@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { TbRecord } from '../types'
+import { ParentSelect } from './ParentSelect'
 
 interface Props {
   record: TbRecord
@@ -23,6 +24,7 @@ export function EditRecordModal({ record: r, onDone, onCancel }: Props) {
   const [body, setBody] = useState(r.rec_body ?? '')
   const [priority, setPriority] = useState(r.rec_priority ?? 2)
   const [due, setDue] = useState(r.rec_due_date ? r.rec_due_date.slice(0, 10) : '')
+  const [parentId, setParentId] = useState<string | null>(r.rec_parent_id ?? null)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -39,6 +41,7 @@ export function EditRecordModal({ record: r, onDone, onCancel }: Props) {
       rec_title: title.trim(),
       rec_body: body.trim() || null,
       rec_priority: priority,
+      rec_parent_id: parentId,
     }
     if (isTask) patch.rec_due_date = due || null
     await supabase.from('tb_records').update(patch).eq('rec_id', r.rec_id)
@@ -102,6 +105,8 @@ export function EditRecordModal({ record: r, onDone, onCancel }: Props) {
               </div>
             )}
           </div>
+
+          <ParentSelect record={r} value={parentId} onChange={setParentId} />
         </div>
 
         <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-100">

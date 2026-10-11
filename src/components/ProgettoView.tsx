@@ -1,10 +1,14 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useProjects } from '../hooks/useProjects'
 import { useWorkspaces } from '../hooks/useWorkspaces'
 import { useProjectRecords } from '../hooks/useProjectRecords'
 import { RecordDetailModal } from './RecordDetailModal'
+import { ProjectTree } from './ProjectTree'
 import { kindLabel, dueDateLabel, isOverdue } from '../utils/format'
-import type { TbRecord } from '../types'
+import { buildTree, treeToText } from '../lib/recordTree'
+import { exportProjectDocx, downloadBlob } from '../lib/exportProjectDocx'
+import { supabase } from '../lib/supabase'
+import type { TbRecord, TbRecordItem } from '../types'
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -141,15 +145,42 @@ function StatusGroup({ status, records }: { status: string; records: TbRecord[] 
 // ─── ProgettoView principale ──────────────────────────────────────────────────
 
 type KindFilter = 'all' | 'T' | 'M' | 'EV'
+type ViewMode = 'elenco' | 'albero' | 'testo'
 
-export function ProgettoView() {
+export function ProgettoView({ initialPrjId }: { initialPrjId?: string | null } = {}) {
   const { projects, loading: projLoading } = useProjects()
   const { workspaces } = useWorkspaces()
-  const [selectedPrjId, setSelectedPrjId] = useState<string | null>(null)
+  const [selectedPrjId, setSelectedPrjId] = useState<string | null>(initialPrjId ?? null)
   const [filterKind, setFilterKind] = useState<KindFilter>('all')
   const [filterText, setFilterText] = useState('')
+  const [view, setView] = useState<ViewMode>('elenco')
+  const [items, setItems] = useState<TbRecordItem[]>([])
+  const [exporting, setExporting] = useState(false)
 
-  const { records, loading } = useProjectRecords(selectedPrjId)
+  useEffect(() => { if (initialPrjId) setSelectedPrjId(initialPrjId) }, [initialPrjId])
+
+  const { records, loading, refetch } = useProjectRecords(selectedPrjId)
+
+  // Sub-task e aggiornamenti di tutti i record del progetto (per albero, testo e Word)
+  useEffect(() => {
+    if (records.length === 0) { setItems([]); return }
+    const ids = records.map(r => r.rec_id)
+    supabase
+      .from('tb_record_items')
+      .select('*')
+      .in('item_parent_id', ids)
+      .order('item_created_at')
+      .then(({ data }) => setItems((data ?? []) as TbRecordItem[]))
+  }, [records])
+
+  const itemsByRec = useMemo(() => {
+    const m = new Map<string, TbRecordItem[]>()
+    for (const it of items) {
+      if (!m.has(it.item_parent_id)) m.set(it.item_parent_id, [])
+      m.get(it.item_parent_id)!.push(it)
+    }
+    return m
+  }, [items])
 
   // Progetto selezionato (info)
   const selectedProject = useMemo(
@@ -186,6 +217,24 @@ export function ProgettoView() {
       }))
       .filter(g => g.records.length > 0)
   }, [filtered])
+
+  // Albero (sui record filtrati) e outline testuale
+  const treeRoots = useMemo(() => buildTree(filtered), [filtered])
+  const treeText = useMemo(() => {
+    if (!selectedProject) return ''
+    return treeToText(treeRoots, `${selectedProject.prj_code} — ${selectedProject.prj_label}`, itemsByRec)
+  }, [treeRoots, selectedProject, itemsByRec])
+
+  async function handleExportDocx() {
+    if (!selectedProject || exporting) return
+    setExporting(true)
+    try {
+      const blob = await exportProjectDocx(selectedProject, records, items)
+      downloadBlob(blob, `${selectedProject.prj_code}_storia_progetto.docx`)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   // Statistiche
   const stats = useMemo(() => ({
@@ -243,10 +292,12 @@ export function ProgettoView() {
           <div
             className="flex items-center gap-3 px-4 py-2.5 rounded-lg border"
             style={{
+              borderTopColor: '#E0E0E0',
+              borderRightColor: '#E0E0E0',
+              borderBottomColor: '#E0E0E0',
               borderLeftColor: selectedWs?.ws_color ?? '#718096',
               borderLeftWidth: 4,
               backgroundColor: '#F8F9FA',
-              borderColor: '#E0E0E0',
             }}
           >
             <span className="text-sm font-semibold text-gray-800">{selectedProject.prj_label}</span>
@@ -326,14 +377,81 @@ export function ProgettoView() {
             <span className="text-sm text-gray-500 ml-auto">{filtered.length} record</span>
           </div>
 
-          {/* Record raggruppati per status */}
-          {groups.length === 0 ? (
-            <div className="text-center py-12 text-gray-400 text-sm">Nessun record trovato.</div>
-          ) : (
-            <div className="flex flex-col gap-5">
-              {groups.map(g => (
-                <StatusGroup key={g.status} status={g.status} records={g.records} />
+          {/* Vista + azioni di stampa/esportazione */}
+          <div className="flex flex-wrap items-center gap-2 print:hidden">
+            <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+              {(['elenco', 'albero', 'testo'] as ViewMode[]).map(v => (
+                <button
+                  key={v}
+                  onClick={() => setView(v)}
+                  className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                    view === v ? 'bg-gray-800 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'
+                  }`}
+                >
+                  {v === 'elenco' ? '☰ Elenco' : v === 'albero' ? '🌳 Albero' : '📄 Testo'}
+                </button>
               ))}
+            </div>
+            <div className="ml-auto flex items-center gap-2">
+              {view !== 'elenco' && (
+                <button
+                  onClick={() => window.print()}
+                  className="px-3 py-1.5 text-xs font-medium border border-gray-200 bg-white rounded-lg hover:bg-gray-50 text-gray-600"
+                >
+                  🖨 Stampa
+                </button>
+              )}
+              {view === 'testo' && (
+                <button
+                  onClick={() => navigator.clipboard.writeText(treeText)}
+                  className="px-3 py-1.5 text-xs font-medium border border-gray-200 bg-white rounded-lg hover:bg-gray-50 text-gray-600"
+                >
+                  📋 Copia
+                </button>
+              )}
+              <button
+                onClick={handleExportDocx}
+                disabled={exporting}
+                className="px-3 py-1.5 text-xs font-medium bg-blue-700 text-white rounded-lg hover:bg-blue-800 disabled:opacity-50"
+              >
+                {exporting ? 'Generazione…' : '⬇ Esporta Word'}
+              </button>
+            </div>
+          </div>
+
+          {/* Contenuto */}
+          {view === 'elenco' && (
+            groups.length === 0 ? (
+              <div className="text-center py-12 text-gray-400 text-sm">Nessun record trovato.</div>
+            ) : (
+              <div className="flex flex-col gap-5">
+                {groups.map(g => (
+                  <StatusGroup key={g.status} status={g.status} records={g.records} />
+                ))}
+              </div>
+            )
+          )}
+
+          {view === 'albero' && selectedProject && (
+            <div className="print-area">
+              <div className="hidden print:block mb-4">
+                <h1 className="text-xl font-bold">{selectedProject.prj_label}</h1>
+                <p className="text-sm text-gray-600">{selectedProject.prj_code} · {selectedProject.prj_ws_code} · stampato il {new Date().toLocaleDateString('it-IT')}</p>
+              </div>
+              <ProjectTree
+                roots={treeRoots}
+                items={itemsByRec}
+                project={{ prj_id: selectedProject.prj_id, prj_code: selectedProject.prj_code, prj_ws_id: selectedProject.prj_ws_id, prj_ws_code: selectedProject.prj_ws_code }}
+                onChanged={refetch}
+              />
+            </div>
+          )}
+
+          {view === 'testo' && (
+            <div className="print-area">
+              <pre className="tree-text bg-white border border-gray-200 rounded-xl p-4 text-xs leading-relaxed overflow-x-auto font-mono text-gray-800 whitespace-pre">
+                {treeText}
+              </pre>
             </div>
           )}
         </>

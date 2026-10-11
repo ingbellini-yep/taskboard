@@ -8,13 +8,20 @@ import { CalendarView } from './components/CalendarView'
 import { SmallTasksView } from './components/SmallTasksView'
 import { ProgettoView } from './components/ProgettoView'
 import { AcquistiView } from './components/AcquistiView'
+import { GlobalSearch } from './components/GlobalSearch'
 import { useStats } from './hooks/useStats'
 
 type Tab = 'aperti' | 'inbox' | 'completati' | 'archiviati' | 'ore' | 'calendario' | 'small' | 'progetto' | 'acquisti'
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('aperti')
+  const [searchPrjId, setSearchPrjId] = useState<string | null>(null)
   const stats = useStats()
+
+  function openProject(prjId: string) {
+    setSearchPrjId(prjId)
+    setTab('progetto')
+  }
 
   const lastUpdated =
     stats.lastUpdated.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
@@ -33,6 +40,9 @@ export default function App() {
           <p className="text-xs mt-1" style={{ color: '#9E9E9E' }}>
             Ordine Ingegneri AG n. 1244 · Viale della Vittoria 105, Agrigento · v2 · {stats.progettiAttivi} progetti attivi
           </p>
+          <div className="mt-3">
+            <GlobalSearch onOpenProject={openProject} />
+          </div>
         </div>
       </header>
 
@@ -106,7 +116,7 @@ export default function App() {
         {tab === 'ore' && <OreView />}
         {tab === 'calendario' && <CalendarView />}
         {tab === 'small' && <SmallTasksView />}
-        {tab === 'progetto' && <ProgettoView />}
+        {tab === 'progetto' && <ProgettoView initialPrjId={searchPrjId} />}
         {tab === 'acquisti' && <AcquistiView />}
       </main>
     </div>
