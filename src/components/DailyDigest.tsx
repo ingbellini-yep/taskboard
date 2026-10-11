@@ -17,6 +17,47 @@ function fmtTime(iso: string) {
 
 interface Digest { today: TbRecord[]; overdue: TbRecord[]; events: TbRecord[] }
 
+/** Evento globale per riaprire la splash (es. dal pulsante "Oggi" nell'header). */
+export const OPEN_EVENT = 'tb:open-digest'
+export function openDailyDigest() { window.dispatchEvent(new Event(OPEN_EVENT)) }
+
+async function fetchDigest(): Promise<Digest> {
+  const today = todayKey()
+  const dayStart = `${today}T00:00:00`
+  const dayEnd = `${today}T23:59:59`
+  const [{ data: tasks }, { data: evs }] = await Promise.all([
+    supabase
+      .from('tb_records')
+      .select('*, tb_projects!rec_prj_id ( prj_label ), tb_workspaces!rec_ws_id ( ws_label, ws_color, ws_icon )')
+      .eq('rec_kind', 'T')
+      .in('rec_status', ['aperto', 'in_progress', 'sospeso'])
+      .lte('rec_due_date', dayEnd)
+      .order('rec_priority')
+      .order('rec_due_date'),
+    supabase
+      .from('tb_records')
+      .select('*, tb_projects!rec_prj_id ( prj_label ), tb_workspaces!rec_ws_id ( ws_label, ws_color, ws_icon )')
+      .eq('rec_kind', 'EV')
+      .in('rec_status', ['aperto', 'in_progress'])
+      .gte('rec_event_start', dayStart)
+      .lte('rec_event_start', dayEnd)
+      .order('rec_event_start'),
+  ])
+  const norm = (rows: Record<string, unknown>[] | null) => (rows ?? []).map(r => ({
+    ...r,
+    prj_label: (r.tb_projects as { prj_label: string } | null)?.prj_label ?? null,
+    ws_label: (r.tb_workspaces as { ws_label: string } | null)?.ws_label ?? null,
+    ws_color: (r.tb_workspaces as { ws_color: string } | null)?.ws_color ?? null,
+    ws_icon: (r.tb_workspaces as { ws_icon: string } | null)?.ws_icon ?? null,
+  })) as TbRecord[]
+  const all = norm(tasks)
+  return {
+    today: all.filter(t => (t.rec_due_date ?? '').slice(0, 10) === today),
+    overdue: all.filter(t => (t.rec_due_date ?? '').slice(0, 10) < today),
+    events: norm(evs),
+  }
+}
+
 /**
  * Splash della giornata: alla prima apertura del giorno mostra i task in scadenza oggi
  * (più quelli scaduti e gli appuntamenti di oggi). Opzionale: notifica browser.
@@ -29,66 +70,36 @@ export function DailyDigest() {
     try { return localStorage.getItem(NOTIF_KEY) === '1' && Notification?.permission === 'granted' } catch { return false }
   })
 
+  // Prima apertura del giorno: carica e mostra (solo se c'è qualcosa), eventuale notifica
   useEffect(() => {
     let seen: string | null = null
     try { seen = localStorage.getItem(SEEN_KEY) } catch { /* ignore */ }
     if (seen === todayKey()) return
 
-    const load = async () => {
-      const today = todayKey()
-      const dayStart = `${today}T00:00:00`
-      const dayEnd = `${today}T23:59:59`
-      const [{ data: tasks }, { data: evs }] = await Promise.all([
-        supabase
-          .from('tb_records')
-          .select('*, tb_projects!rec_prj_id ( prj_label ), tb_workspaces!rec_ws_id ( ws_label, ws_color, ws_icon )')
-          .eq('rec_kind', 'T')
-          .in('rec_status', ['aperto', 'in_progress', 'sospeso'])
-          .lte('rec_due_date', dayEnd)
-          .order('rec_priority')
-          .order('rec_due_date'),
-        supabase
-          .from('tb_records')
-          .select('*, tb_projects!rec_prj_id ( prj_label ), tb_workspaces!rec_ws_id ( ws_label, ws_color, ws_icon )')
-          .eq('rec_kind', 'EV')
-          .in('rec_status', ['aperto', 'in_progress'])
-          .gte('rec_event_start', dayStart)
-          .lte('rec_event_start', dayEnd)
-          .order('rec_event_start'),
-      ])
-      const norm = (rows: Record<string, unknown>[] | null) => (rows ?? []).map(r => ({
-        ...r,
-        prj_label: (r.tb_projects as { prj_label: string } | null)?.prj_label ?? null,
-        ws_label: (r.tb_workspaces as { ws_label: string } | null)?.ws_label ?? null,
-        ws_color: (r.tb_workspaces as { ws_color: string } | null)?.ws_color ?? null,
-        ws_icon: (r.tb_workspaces as { ws_icon: string } | null)?.ws_icon ?? null,
-      })) as TbRecord[]
-
-      const all = norm(tasks)
-      const d: Digest = {
-        today: all.filter(t => (t.rec_due_date ?? '').slice(0, 10) === today),
-        overdue: all.filter(t => (t.rec_due_date ?? '').slice(0, 10) < today),
-        events: norm(evs),
-      }
+    fetchDigest().then(d => {
       if (d.today.length + d.overdue.length + d.events.length === 0) {
-        try { localStorage.setItem(SEEN_KEY, today) } catch { /* ignore */ }
+        try { localStorage.setItem(SEEN_KEY, todayKey()) } catch { /* ignore */ }
         return
       }
       setDigest(d)
       setVisible(true)
-
-      // Notifica browser (se attivata)
       try {
         if (localStorage.getItem(NOTIF_KEY) === '1' && Notification.permission === 'granted') {
           const parts: string[] = []
           if (d.today.length) parts.push(`${d.today.length} in scadenza oggi`)
           if (d.overdue.length) parts.push(`${d.overdue.length} scadut${d.overdue.length === 1 ? 'o' : 'i'}`)
           if (d.events.length) parts.push(`${d.events.length} appuntament${d.events.length === 1 ? 'o' : 'i'}`)
-          new Notification('Taskboard — oggi', { body: parts.join(' · '), icon: '/icon-192.png', tag: 'tb-digest-' + today })
+          new Notification('Taskboard — oggi', { body: parts.join(' · '), icon: '/icon-192.png', tag: 'tb-digest-' + todayKey() })
         }
       } catch { /* ignore */ }
-    }
-    load()
+    })
+  }, [])
+
+  // Richiamo manuale durante la giornata (pulsante "Oggi" nell'header): mostra sempre, dati freschi
+  useEffect(() => {
+    const onOpen = () => { fetchDigest().then(d => { setDigest(d); setVisible(true) }) }
+    window.addEventListener(OPEN_EVENT, onOpen)
+    return () => window.removeEventListener(OPEN_EVENT, onOpen)
   }, [])
 
   function close() {
@@ -157,6 +168,12 @@ export function DailyDigest() {
           </div>
 
           <div className="px-3 py-3 overflow-y-auto flex flex-col gap-3">
+            {digest.today.length + digest.overdue.length + digest.events.length === 0 && (
+              <div className="text-center py-8 text-gray-500 text-sm">
+                <div className="text-3xl mb-2">🎉</div>
+                Nessuna scadenza, nessun ritardo e nessun appuntamento per oggi.
+              </div>
+            )}
             {digest.today.length > 0 && (
               <section>
                 <div className="px-3 text-[10px] uppercase tracking-wide text-orange-700 font-semibold mb-1">🎯 Scadono oggi</div>

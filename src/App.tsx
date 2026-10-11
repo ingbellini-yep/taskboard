@@ -9,6 +9,7 @@ import { SmallTasksView } from './components/SmallTasksView'
 import { ProgettoView } from './components/ProgettoView'
 import { AcquistiView } from './components/AcquistiView'
 import { GlobalSearch } from './components/GlobalSearch'
+import { openDailyDigest } from './components/DailyDigest'
 import { useStats } from './hooks/useStats'
 
 type Tab = 'aperti' | 'inbox' | 'completati' | 'archiviati' | 'ore' | 'calendario' | 'small' | 'progetto' | 'acquisti'
@@ -40,8 +41,15 @@ export default function App() {
           <p className="text-xs mt-1" style={{ color: '#9E9E9E' }}>
             Ordine Ingegneri AG n. 1244 · Viale della Vittoria 105, Agrigento · v2 · {stats.progettiAttivi} progetti attivi
           </p>
-          <div className="mt-3">
+          <div className="mt-3 flex items-center gap-2">
             <GlobalSearch onOpenProject={openProject} />
+            <button
+              onClick={openDailyDigest}
+              className="shrink-0 text-sm font-medium px-3 py-1.5 rounded-lg border border-white/15 bg-white/10 text-white hover:bg-white/20 transition-colors"
+              title="Riepilogo di oggi: scadenze, ritardi e appuntamenti"
+            >
+              📋 Oggi
+            </button>
           </div>
         </div>
       </header>
