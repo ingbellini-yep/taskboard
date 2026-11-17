@@ -10,6 +10,7 @@ import { ProgettoView } from './components/ProgettoView'
 import { AcquistiView } from './components/AcquistiView'
 import { GlobalSearch } from './components/GlobalSearch'
 import { openDailyDigest } from './components/DailyDigest'
+import { SettingsMenu } from './components/SettingsMenu'
 import { useStats } from './hooks/useStats'
 
 type Tab = 'aperti' | 'inbox' | 'completati' | 'archiviati' | 'ore' | 'calendario' | 'small' | 'progetto' | 'acquisti'
@@ -50,6 +51,7 @@ export default function App() {
             >
               📋 Oggi
             </button>
+            <SettingsMenu />
           </div>
         </div>
       </header>

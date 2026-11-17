@@ -29,7 +29,13 @@ export default defineConfig({
         clientsClaim: true,
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/dacekxilrahnbwwjovde\.supabase\.co\/.*/i,
+            // Auth (token, profilo utente, recupero password): mai in cache
+            urlPattern: /^https:\/\/dacekxilrahnbwwjovde\.supabase\.co\/auth\/.*/i,
+            handler: 'NetworkOnly',
+          },
+          {
+            // Solo le letture dati REST. La cache viene svuotata al logout (AuthGate).
+            urlPattern: /^https:\/\/dacekxilrahnbwwjovde\.supabase\.co\/rest\/.*/i,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'supabase-cache',
