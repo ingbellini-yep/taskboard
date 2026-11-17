@@ -2,3 +2,8 @@ node_modules
 dist
 .env
 .env.local
+
+# File locali con credenziali o generati: mai nel repository
+new_bot.txt
+TELEGRAM_BOT_TOKEN*.txt
+__pycache__/
