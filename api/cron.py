@@ -10,9 +10,10 @@ from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from bot.config import CRON_SECRET, TELEGRAM_CHAT_ID
 from bot.database import get_today_events, get_today_tasks, get_upcoming_event_alerts
 from bot.messages import daily_digest
-import requests as _req
+from bot import tgapi
 
 
 class handler(BaseHTTPRequestHandler):
@@ -23,7 +24,20 @@ class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         self._run_cron()
 
+    def _reply(self, status: int, body: bytes) -> None:
+        self.send_response(status)
+        self.send_header("Content-Type", "text/plain")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def _run_cron(self):
+        # Vercel Cron invia "Authorization: Bearer <CRON_SECRET>" quando la variabile
+        # d'ambiente CRON_SECRET è configurata: in quel caso le altre chiamate sono respinte.
+        if CRON_SECRET and self.headers.get("Authorization", "") != f"Bearer {CRON_SECRET}":
+            self._reply(401, b"Unauthorized")
+            return
+
         try:
             now    = datetime.now(timezone.utc)
             events = get_today_events()
@@ -33,31 +47,15 @@ class handler(BaseHTTPRequestHandler):
             if not msg.strip():
                 msg = "⚠️ Digest vuoto"
 
-            chat_id = int(os.environ.get("TELEGRAM_CHAT_ID", "0"))
-            token   = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-            print(f"[cron] chat_id={chat_id} msg_len={len(msg)}", file=sys.stderr)
-
-            _req.post(
-                f"https://api.telegram.org/bot{token}/sendMessage",
-                json={"chat_id": chat_id, "text": msg, "parse_mode": "HTML"},
-                timeout=10,
-            ).raise_for_status()
-
-            body = b"Digest inviato"
-            self.send_response(200)
-            self.send_header("Content-Type", "text/plain")
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
+            print(f"[cron] msg_len={len(msg)}", file=sys.stderr)
+            # tgapi non riporta mai l'URL negli errori (l'URL contiene il token del bot)
+            tgapi.send_message(TELEGRAM_CHAT_ID, msg, parse_mode="HTML")
+            self._reply(200, b"Digest inviato")
 
         except Exception as exc:
+            # Il dettaglio resta nei log; al chiamante non viene restituito nulla di interno
             print(f"[cron] ERROR: {exc}", file=sys.stderr)
-            body = str(exc).encode()
-            self.send_response(500)
-            self.send_header("Content-Type", "text/plain")
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
+            self._reply(500, b"Errore nell'invio del digest")
 
     def log_message(self, format, *args):
         pass

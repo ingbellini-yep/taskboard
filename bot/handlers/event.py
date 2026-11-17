@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from ..config import EV_PROJECT, EV_TITLE, EV_START, EV_DURATION, EV_ALERT, IDLE
 from ..database import create_record, generate_record_code, check_event_conflicts
 from ..keyboards import project_keyboard, alert_keyboard, conflict_keyboard
-from ..messages import event_saved, conflict_warning
+from ..messages import event_saved, conflict_warning, esc
 from ..parsers import parse_datetime, parse_duration_minutes, has_time, format_it_datetime
 from ..session import set_session, get_session, clear_session
 from .. import tgapi
@@ -29,7 +29,7 @@ def on_project_selected(chat_id: int, prj_id: str, prj_code: str,
         "ws_id": ws_id, "ws_code": ws_code,
         "prj_label": prj_label, "bucket": "project",
     })
-    tgapi.send_message(chat_id, f"📁 *{prj_label}*\n\n📅 Titolo dell'evento:", parse_mode="Markdown")
+    tgapi.send_message(chat_id, f"📁 <b>{esc(prj_label)}</b>\n\n📅 Titolo dell'evento:", parse_mode="HTML")
 
 
 def on_bucket_selected(chat_id: int, bucket: str) -> None:
@@ -83,7 +83,7 @@ def on_duration(chat_id: int, text: str) -> None:
         if conflicts:
             start_label = format_it_datetime(start)
             msg = conflict_warning(data["ev_title"], start_label, conflicts)
-            tgapi.send_message(chat_id, msg, parse_mode="Markdown", reply_markup=conflict_keyboard())
+            tgapi.send_message(chat_id, msg, parse_mode="HTML", reply_markup=conflict_keyboard())
             return
 
     tgapi.send_message(chat_id, "⏰ Avviso anticipato?", reply_markup=alert_keyboard())
@@ -158,4 +158,4 @@ def _save_event(chat_id: int, data: dict, alert_days: int | None) -> None:
     msg = event_saved(display_code, data["ev_title"], data.get("prj_label"), start_iso)
     if alert_days:
         msg += f"\n⏰ Avviso {alert_days}gg prima"
-    tgapi.send_message(chat_id, msg, parse_mode="Markdown")
+    tgapi.send_message(chat_id, msg, parse_mode="HTML")

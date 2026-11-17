@@ -4,7 +4,7 @@ from __future__ import annotations
 from ..config import TASK_PROJECT, TASK_TITLE, TASK_DUE
 from ..database import create_record, generate_record_code
 from ..keyboards import project_keyboard
-from ..messages import record_saved
+from ..messages import record_saved, esc
 from ..parsers import parse_datetime
 from ..session import set_session, get_session, clear_session
 from .. import tgapi
@@ -27,13 +27,13 @@ def on_project_selected(chat_id: int, prj_id: str, prj_code: str,
         "ws_id": ws_id, "ws_code": ws_code,
         "prj_label": prj_label, "bucket": "project",
     })
-    tgapi.send_message(chat_id, f"📁 *{prj_label}*\n\n✏️ Descrivi il task:", parse_mode="Markdown")
+    tgapi.send_message(chat_id, f"📁 <b>{esc(prj_label)}</b>\n\n✏️ Descrivi il task:", parse_mode="HTML")
 
 
 def on_bucket_selected(chat_id: int, bucket: str) -> None:
     label = "Inbox" if bucket == "inbox" else "Small Tasks"
     set_session(chat_id, TASK_TITLE, {"bucket": bucket, "prj_id": None})
-    tgapi.send_message(chat_id, f"📁 *{label}*\n\n✏️ Descrivi il task:", parse_mode="Markdown")
+    tgapi.send_message(chat_id, f"📁 <b>{label}</b>\n\n✏️ Descrivi il task:", parse_mode="HTML")
 
 
 def on_title(chat_id: int, title: str) -> None:
@@ -80,4 +80,4 @@ def on_due(chat_id: int, text: str) -> None:
 
     display_code = code or bucket.upper()
     msg = record_saved(display_code, data["title"], data.get("prj_label"), due_iso, "T")
-    tgapi.send_message(chat_id, msg, parse_mode="Markdown")
+    tgapi.send_message(chat_id, msg, parse_mode="HTML")

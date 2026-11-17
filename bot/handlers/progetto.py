@@ -4,6 +4,7 @@ from __future__ import annotations
 from ..config import PROJ_SEARCH
 from ..database import search_projects, db
 from ..keyboards import search_results_keyboard
+from ..messages import esc, code_tag
 from ..session import set_session, clear_session
 from .. import tgapi
 
@@ -61,21 +62,21 @@ def _show_project_detail(chat_id: int, prj_id: str) -> None:
     records = rec_r.data or []
 
     lines = [
-        f"📁 *{prj['prj_code']} — {prj['prj_label']}*",
-        f"Stato: {prj['prj_status']} | Priorità: {prj['prj_priority']}",
+        f"📁 <b>{esc(prj['prj_code'])} — {esc(prj['prj_label'])}</b>",
+        f"Stato: {esc(prj['prj_status'])} | Priorità: {esc(prj['prj_priority'])}",
     ]
     if prj.get("prj_client"):
-        lines.append(f"Cliente: {prj['prj_client']}")
+        lines.append(f"Cliente: {esc(prj['prj_client'])}")
     if prj.get("prj_due_date"):
-        lines.append(f"Scadenza: {prj['prj_due_date']}")
+        lines.append(f"Scadenza: {esc(prj['prj_due_date'])}")
 
     if records:
-        lines.append(f"\n*Record aperti ({len(records)}):*")
+        lines.append(f"\n<b>Record aperti ({len(records)}):</b>")
         for r in records:
             kind_sym = {"T": "☐", "M": "📝", "EV": "📅"}.get(r["rec_kind"], "•")
-            due = f" ⏰{r['rec_due_date'][:10]}" if r.get("rec_due_date") else ""
-            lines.append(f"  {kind_sym} `{r['rec_code']}` {r['rec_title']}{due}")
+            due = f" ⏰{esc(r['rec_due_date'][:10])}" if r.get("rec_due_date") else ""
+            lines.append(f"  {kind_sym} {code_tag(r)} {esc(r['rec_title'])}{due}")
     else:
-        lines.append("\n_Nessun record aperto._")
+        lines.append("\n<i>Nessun record aperto.</i>")
 
-    tgapi.send_message(chat_id, "\n".join(lines), parse_mode="Markdown")
+    tgapi.send_message(chat_id, "\n".join(lines), parse_mode="HTML")

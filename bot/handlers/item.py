@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from ..config import ITEM_CODE, ITEM_TEXT
 from ..database import get_record_by_code, create_record_item, create_record
+from ..messages import esc, code_tag
 from ..session import set_session, get_session, clear_session
 from .. import tgapi
 
@@ -59,7 +60,7 @@ def _start(chat_id: int, text: str, item_kind: str, cmd: str) -> None:
         label = "sub-task" if item_kind == "subtask" else "aggiornamento"
         tgapi.send_message(
             chat_id,
-            f"📎 <code>{parent['rec_code']}</code> — {parent['rec_title']}\n\n✏️ Testo del {label}:",
+            f"📎 {code_tag(parent)} — {esc(parent['rec_title'])}\n\n✏️ Testo del {label}:",
             parse_mode="HTML",
         )
         return
@@ -77,7 +78,7 @@ def on_code(chat_id: int, code: str) -> None:
     if not parent:
         tgapi.send_message(
             chat_id,
-            f"❌ Nessun record con codice <code>{code}</code>.\n"
+            f"❌ Nessun record con codice <code>{esc(code)}</code>.\n"
             "Riprova col codice corretto, oppure /inbox per vedere i record.",
             parse_mode="HTML",
         )
@@ -92,7 +93,7 @@ def on_code(chat_id: int, code: str) -> None:
     label = "sub-task" if item_kind == "subtask" else "aggiornamento"
     tgapi.send_message(
         chat_id,
-        f"📎 <code>{parent.get('rec_code')}</code> — {parent['rec_title']}\n\n✏️ Testo del {label}:",
+        f"📎 {code_tag(parent)} — {esc(parent['rec_title'])}\n\n✏️ Testo del {label}:",
         parse_mode="HTML",
     )
 
@@ -140,7 +141,7 @@ def _fallback_inbox(chat_id: int, code: str, body: str, item_kind: str) -> None:
     })
     tgapi.send_message(
         chat_id,
-        f"⚠️ Codice <code>{code}</code> non trovato.\n"
+        f"⚠️ Codice <code>{esc(code)}</code> non trovato.\n"
         f"Ho salvato la nota in 📥 <b>Inbox</b>: la potrai attribuire dalla web app.",
         parse_mode="HTML",
     )

@@ -11,7 +11,7 @@ def record_saved(code: str, title: str, prj_label: str | None, due_date: str | N
     icon = icons.get(kind, "✅")
     lines = [
         f"{icon} {kind_label(kind)} salvato",
-        f"📎 <code>{code}</code>",
+        f"📎 <code>{_esc(code)}</code>",
     ]
     if prj_label:
         lines.append(f"📁 {_esc(prj_label)}")
@@ -25,7 +25,7 @@ def record_saved(code: str, title: str, prj_label: str | None, due_date: str | N
 def event_saved(code: str, title: str, prj_label: str | None, start: str | None) -> str:
     lines = [
         "✅ Event salvato",
-        f"📎 <code>{code}</code>",
+        f"📎 <code>{_esc(code)}</code>",
     ]
     if prj_label:
         lines.append(f"📁 {_esc(prj_label)}")
@@ -44,7 +44,7 @@ def conflict_warning(new_title: str, new_start: str, conflicts: list[dict]) -> s
     ]
     for c in conflicts[:3]:
         start = datetime.fromisoformat(c["rec_event_start"])
-        lines.append(f"  <code>{c['rec_code']}</code> — {_esc(c['rec_title'])}")
+        lines.append(f"  {_code(c)} — {_esc(c['rec_title'])}")
         lines.append(f"  📅 {format_it_datetime(start)}")
     lines.append("\nProcedi comunque?")
     return "\n".join(lines)
@@ -70,13 +70,14 @@ def daily_digest(today: datetime, events: list[dict], tasks: list[dict], alerts:
             lines.append(
                 f"  <code>{start.strftime('%H:%M')}</code>{end_str}  {_esc(ev['rec_title'])}{prj}"
             )
-            lines.append(f"  {ev['rec_code']}")
+            if ev.get("rec_code"):
+                lines.append(f"  {_code(ev)}")
 
     if tasks:
         lines.append("\n✅ <b>TASK IN SCADENZA OGGI</b>")
         for t in tasks:
             prj = _get_prj_label(t)
-            lines.append(f"  <code>{t['rec_code']}</code>  {_esc(t['rec_title'])}{prj}")
+            lines.append(f"  {_code(t)}  {_esc(t['rec_title'])}{prj}")
 
     if alerts:
         lines.append("\n⏰ <b>AVVISI ANTICIPATI</b>")
@@ -85,7 +86,7 @@ def daily_digest(today: datetime, events: list[dict], tasks: list[dict], alerts:
             days = a.get("days_to_event", "?")
             prj = _get_prj_label(a)
             lines.append(
-                f"  [{days}gg] <code>{a['rec_code']}</code>  {_esc(a['rec_title'])}{prj}"
+                f"  [{days}gg] {_code(a)}  {_esc(a['rec_title'])}{prj}"
             )
             lines.append(f"  {format_it_datetime(start)}")
 
@@ -122,13 +123,13 @@ def week_digest(week_start: "date", week_end: "date", events: list[dict], tasks:
                 f"  <b>{giorno} {start.strftime('%d/%m')}</b>  "
                 f"<code>{ora_s}{ora_e}</code>  {_esc(ev['rec_title'])}{prj}"
             )
-            lines.append(f"  <code>{ev['rec_code']}</code>")
+            if ev.get("rec_code"):
+                lines.append(f"  {_code(ev)}")
 
     if tasks:
         lines.append(f"\n✅ <b>TASK IN SCADENZA ({len(tasks)})</b>")
         for t in tasks:
-            due = t["rec_due_date"]
-            due_date = date.fromisoformat(due)
+            due_date = _due_date(t["rec_due_date"])
             diff = (due_date - today).days
             if diff < 0:
                 label = f"🔴 Scaduto {abs(diff)}gg fa"
@@ -140,7 +141,7 @@ def week_digest(week_start: "date", week_end: "date", events: list[dict], tasks:
                 label = f"📅 {due_date.strftime('%d/%m')}"
             prj = _get_prj_label(t)
             lines.append(
-                f"  {label}  <code>{t['rec_code']}</code>  {_esc(t['rec_title'])}{prj}"
+                f"  {label}  {_code(t)}  {_esc(t['rec_title'])}{prj}"
             )
 
     if not events and not tasks:
@@ -169,14 +170,14 @@ def urgent_list(tasks: list[dict]) -> str:
 
     for t in tasks:
         status_icon = "⏸" if t.get("rec_status") == "sospeso" else "🔴"
-        lines.append(f"\n{status_icon} <code>{t['rec_code']}</code>")
+        lines.append(f"\n{status_icon} {_code(t)}")
         lines.append(f"   {_esc(t['rec_title'])}")
         prj = _get_prj_label(t)
         if prj:
             lines.append(f"   📁{prj}")
         due = t.get("rec_due_date")
         if due:
-            due_date = date.fromisoformat(due)
+            due_date = _due_date(due)
             diff = (due_date - today).days
             if diff < 0:
                 lines.append(f"   ⚠️ Scaduto {abs(diff)}gg fa")
@@ -208,9 +209,11 @@ def inbox_list(records: list[dict]) -> str:
     return "\n".join(lines)
 
 
-# ─── helpers interni ──────────────────────────────────────────────────────────
+# ─── helpers ──────────────────────────────────────────────────────────────────
+# Tutti i messaggi di questo modulo usano i tag HTML di Telegram (<b>, <i>, <code>)
+# e vanno inviati con parse_mode="HTML". Ogni testo dinamico passa da esc().
 
-def _esc(text: str) -> str:
+def esc(text) -> str:
     """Escapa i caratteri speciali HTML per Telegram."""
     return (
         str(text)
@@ -218,6 +221,34 @@ def _esc(text: str) -> str:
         .replace("<", "&lt;")
         .replace(">", "&gt;")
     )
+
+
+_esc = esc
+
+
+def code_tag(record: dict) -> str:
+    """
+    Codice del record in <code>. I record senza codice (small task, inbox)
+    mostrano un'etichetta al posto di "None".
+    """
+    code = record.get("rec_code")
+    if code:
+        return f"<code>{esc(code)}</code>"
+    bucket = record.get("rec_bucket")
+    if bucket == "small_tasks":
+        return "⚡ <i>small task</i>"
+    if bucket == "inbox":
+        return "📥 <i>inbox</i>"
+    return "•"
+
+
+_code = code_tag
+
+
+def _due_date(value) -> "date":
+    """Data di scadenza da una stringa ISO, con o senza orario (rec_due_date è timestamptz)."""
+    from datetime import date
+    return date.fromisoformat(str(value)[:10])
 
 
 def _get_prj_label(record: dict) -> str:

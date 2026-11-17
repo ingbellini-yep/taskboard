@@ -7,7 +7,7 @@ from ..config import MEMO_PROJECT, MEMO_CONTENT, MEMO_CONFIRM
 from ..database import create_record, generate_record_code
 from ..groq_client import transcribe_audio
 from ..keyboards import project_keyboard, confirm_keyboard
-from ..messages import record_saved
+from ..messages import record_saved, esc
 from ..session import set_session, get_session, clear_session
 from ..storage import upload_file, save_attachment
 from .. import tgapi
@@ -32,8 +32,8 @@ def on_project_selected(chat_id: int, prj_id: str, prj_code: str,
     })
     tgapi.send_message(
         chat_id,
-        f"📁 *{prj_label}*\n\n📝 Scrivi il memo (testo, foto o vocale):",
-        parse_mode="Markdown",
+        f"📁 <b>{esc(prj_label)}</b>\n\n📝 Scrivi il memo (testo, foto o vocale):",
+        parse_mode="HTML",
     )
 
 
@@ -75,7 +75,7 @@ def on_content(chat_id: int, msg: telegram.Message) -> None:
             "duration": msg.voice.duration,
             "filename": f"{msg.voice.file_id}.ogg",
         }
-        preview = f"🎤 Trascritto:\n_{transcription}_"
+        preview = f"🎤 Trascritto:\n<i>{esc(transcription)}</i>"
 
     elif msg.photo:
         photo = msg.photo[-1]
@@ -90,12 +90,12 @@ def on_content(chat_id: int, msg: telegram.Message) -> None:
             "duration": None,
             "filename": f"{photo.file_id}.jpg",
         }
-        preview = f"📷 Foto ricevuta\n_{caption}_" if caption else "📷 Foto ricevuta"
+        preview = f"📷 Foto ricevuta\n<i>{esc(caption)}</i>" if caption else "📷 Foto ricevuta"
 
     elif msg.text:
         title = _truncate_title(msg.text)
         body = msg.text if len(msg.text) > 60 else None
-        preview = f"📝 _{msg.text}_"
+        preview = f"📝 <i>{esc(msg.text)}</i>"
 
     else:
         tgapi.send_message(chat_id, "❌ Formato non supportato. Invia testo, foto o vocale.")
@@ -108,7 +108,7 @@ def on_content(chat_id: int, msg: telegram.Message) -> None:
     tgapi.send_message(
         chat_id,
         f"{preview}\n\nConfermi il salvataggio?",
-        parse_mode="Markdown",
+        parse_mode="HTML",
         reply_markup=confirm_keyboard(),
     )
 
@@ -166,7 +166,7 @@ def _save_memo(chat_id: int, data: dict) -> None:
     clear_session(chat_id)
     display_code = code or bucket.upper()
     msg = record_saved(display_code, data["title"], data.get("prj_label"), None, "M")
-    tgapi.send_message(chat_id, msg, parse_mode="Markdown")
+    tgapi.send_message(chat_id, msg, parse_mode="HTML")
 
 
 def _truncate_title(text: str, max_len: int = 80) -> str:

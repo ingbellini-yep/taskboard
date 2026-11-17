@@ -145,7 +145,7 @@ def get_today_events() -> list[dict]:
     today_end   = today_start.replace(hour=23, minute=59, second=59)
     r = (
         db().table("tb_records")
-        .select("rec_code, rec_title, rec_event_start, rec_event_end, rec_prj_code, prj_label:tb_projects!rec_prj_id(prj_label)")
+        .select("rec_code, rec_bucket, rec_title, rec_event_start, rec_event_end, rec_prj_code, prj_label:tb_projects!rec_prj_id(prj_label)")
         .eq("rec_kind", "EV")
         .not_.in_("rec_status", ["chiuso", "archiviato"])
         .gte("rec_event_start", today_start.isoformat())
@@ -160,7 +160,7 @@ def get_today_tasks() -> list[dict]:
     today = date.today().isoformat()
     r = (
         db().table("tb_records")
-        .select("rec_code, rec_title, rec_prj_code, prj_label:tb_projects!rec_prj_id(prj_label)")
+        .select("rec_code, rec_bucket, rec_title, rec_prj_code, prj_label:tb_projects!rec_prj_id(prj_label)")
         .eq("rec_kind", "T")
         .not_.in_("rec_status", ["chiuso", "archiviato"])
         .lte("rec_due_date", today)
@@ -180,7 +180,7 @@ def get_week_events() -> list[dict]:
     week_end    = datetime(week_sunday.year, week_sunday.month, week_sunday.day, 23, 59, 59, tzinfo=timezone.utc)
     r = (
         db().table("tb_records")
-        .select("rec_code, rec_title, rec_event_start, rec_event_end, rec_prj_code, prj_label:tb_projects!rec_prj_id(prj_label)")
+        .select("rec_code, rec_bucket, rec_title, rec_event_start, rec_event_end, rec_prj_code, prj_label:tb_projects!rec_prj_id(prj_label)")
         .eq("rec_kind", "EV")
         .not_.in_("rec_status", ["chiuso", "archiviato"])
         .gte("rec_event_start", today_start.isoformat())
@@ -198,7 +198,7 @@ def get_week_tasks() -> list[dict]:
     week_sunday = today + timedelta(days=(6 - today.weekday()))
     r = (
         db().table("tb_records")
-        .select("rec_code, rec_title, rec_due_date, rec_priority, rec_status, rec_prj_code, prj_label:tb_projects!rec_prj_id(prj_label)")
+        .select("rec_code, rec_bucket, rec_title, rec_due_date, rec_priority, rec_status, rec_prj_code, prj_label:tb_projects!rec_prj_id(prj_label)")
         .eq("rec_kind", "T")
         .not_.in_("rec_status", ["chiuso", "archiviato"])
         .not_.is_("rec_due_date", "null")
@@ -213,7 +213,7 @@ def get_urgent_tasks() -> list[dict]:
     """Task priorità alta (1) aperti/in_progress/sospesi."""
     r = (
         db().table("tb_records")
-        .select("rec_code, rec_title, rec_due_date, rec_status, rec_prj_code, prj_label:tb_projects!rec_prj_id(prj_label)")
+        .select("rec_code, rec_bucket, rec_title, rec_due_date, rec_status, rec_prj_code, prj_label:tb_projects!rec_prj_id(prj_label)")
         .eq("rec_kind", "T")
         .eq("rec_priority", 1)
         .in_("rec_status", ["aperto", "in_progress", "sospeso"])
@@ -235,7 +235,7 @@ def get_upcoming_event_alerts() -> list[dict]:
     today = date.today()
     r = (
         db().table("tb_records")
-        .select("rec_code, rec_title, rec_event_start, rec_alert_days, rec_prj_code, prj_label:tb_projects!rec_prj_id(prj_label)")
+        .select("rec_code, rec_bucket, rec_title, rec_event_start, rec_alert_days, rec_prj_code, prj_label:tb_projects!rec_prj_id(prj_label)")
         .eq("rec_kind", "EV")
         .not_.in_("rec_status", ["chiuso", "archiviato"])
         .not_.is_("rec_alert_days", "null")

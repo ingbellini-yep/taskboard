@@ -9,4 +9,4 @@ from .. import tgapi
 def cmd_inbox(chat_id: int) -> None:
     records = get_inbox_records()
     msg = inbox_list(records)
-    tgapi.send_message(chat_id, msg, parse_mode="Markdown")
+    tgapi.send_message(chat_id, msg, parse_mode="HTML")
