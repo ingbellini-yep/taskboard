@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { TbRecord } from '../types'
+import { SMALL_CATEGORIES } from '../hooks/useSmallTasks'
 import type { SmallCategory } from '../hooks/useSmallTasks'
 
 interface Props {
@@ -13,14 +14,6 @@ const PRIORITIES = [
   { value: 1, label: 'Alta' },
   { value: 2, label: 'Normale' },
   { value: 3, label: 'Bassa' },
-]
-
-const CATEGORIES: { code: SmallCategory; label: string }[] = [
-  { code: 'LP',   label: 'LP — Libero Professionista' },
-  { code: 'RB',   label: 'RB — Rebuilding' },
-  { code: 'PNRR', label: 'PNRR' },
-  { code: 'FAM',  label: 'FAM — Famiglia' },
-  { code: 'PERS', label: 'PERS — Personale' },
 ]
 
 export function EditSmallTaskModal({ record: r, onDone, onCancel }: Props) {
@@ -121,8 +114,8 @@ export function EditSmallTaskModal({ record: r, onDone, onCancel }: Props) {
               className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">— Nessuna categoria —</option>
-              {CATEGORIES.map(c => (
-                <option key={c.code} value={c.code!}>{c.label}</option>
+              {SMALL_CATEGORIES.map(c => (
+                <option key={c.code} value={c.code!}>{c.longLabel}</option>
               ))}
             </select>
           </div>

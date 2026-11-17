@@ -24,6 +24,15 @@ export const CATEGORY_LABELS: Record<string, string> = {
   PERS: 'PERS',
 }
 
+/** Categorie assegnabili a uno small task (null = nessuna). */
+export const SMALL_CATEGORIES: { code: SmallCategory; label: string; longLabel: string }[] = [
+  { code: 'LP',   label: 'LP',   longLabel: 'LP — Libero Professionista' },
+  { code: 'RB',   label: 'RB',   longLabel: 'RB — Rebuilding' },
+  { code: 'PNRR', label: 'PNRR', longLabel: 'PNRR' },
+  { code: 'FAM',  label: 'FAM',  longLabel: 'FAM — Famiglia' },
+  { code: 'PERS', label: 'PERS', longLabel: 'PERS — Personale' },
+]
+
 export function categoryColor(code: string | null): string {
   return code ? (CATEGORY_COLORS[code] ?? '#757575') : '#757575'
 }
@@ -121,6 +130,17 @@ export function useSmallTasks() {
     await supabase.from('tb_records').delete().eq('rec_id', recId)
   }
 
+  async function updateCategory(recId: string, category: SmallCategory) {
+    // Aggiornamento ottimistico; rec_ws_id azzerato così il trigger lo ricava da rec_ws_code
+    setRecords(prev => prev.map(r =>
+      r.rec_id === recId ? { ...r, rec_ws_code: category, rec_ws_id: null } : r
+    ))
+    await supabase
+      .from('tb_records')
+      .update({ rec_ws_code: category, rec_ws_id: null })
+      .eq('rec_id', recId)
+  }
+
   async function updatePriority(recId: string, priority: number) {
     setRecords(prev => prev.map(r =>
       r.rec_id === recId ? { ...r, rec_priority: priority } : r
@@ -128,5 +148,5 @@ export function useSmallTasks() {
     await supabase.from('tb_records').update({ rec_priority: priority }).eq('rec_id', recId)
   }
 
-  return { records, loading, addTask, updateStatus, deleteTask, updatePriority, refetch: fetch }
+  return { records, loading, addTask, updateStatus, deleteTask, updatePriority, updateCategory, refetch: fetch }
 }

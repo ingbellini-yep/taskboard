@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { TbRecord } from '../types'
 import { ParentSelect } from './ParentSelect'
+import { SMALL_CATEGORIES } from '../hooks/useSmallTasks'
+import type { SmallCategory } from '../hooks/useSmallTasks'
 
 interface Props {
   record: TbRecord
@@ -19,11 +21,13 @@ const PRIORITIES = [
 export function EditRecordModal({ record: r, onDone, onCancel }: Props) {
   const titleRef = useRef<HTMLInputElement>(null)
   const isTask = r.rec_kind === 'T'
+  const isSmall = r.rec_bucket === 'small_tasks'
 
   const [title, setTitle] = useState(r.rec_title)
   const [body, setBody] = useState(r.rec_body ?? '')
   const [priority, setPriority] = useState(r.rec_priority ?? 2)
   const [due, setDue] = useState(r.rec_due_date ? r.rec_due_date.slice(0, 10) : '')
+  const [category, setCategory] = useState<SmallCategory>((r.rec_ws_code ?? null) as SmallCategory)
   const [parentId, setParentId] = useState<string | null>(r.rec_parent_id ?? null)
   const [saving, setSaving] = useState(false)
 
@@ -44,6 +48,11 @@ export function EditRecordModal({ record: r, onDone, onCancel }: Props) {
       rec_parent_id: parentId,
     }
     if (isTask) patch.rec_due_date = due || null
+    if (isSmall) {
+      // Categoria small task: rec_ws_id azzerato così il trigger lo ricava da rec_ws_code
+      patch.rec_ws_code = category
+      patch.rec_ws_id = null
+    }
     await supabase.from('tb_records').update(patch).eq('rec_id', r.rec_id)
     setSaving(false)
     onDone()
@@ -105,6 +114,22 @@ export function EditRecordModal({ record: r, onDone, onCancel }: Props) {
               </div>
             )}
           </div>
+
+          {isSmall && (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-gray-500">Categoria</label>
+              <select
+                value={category ?? ''}
+                onChange={e => setCategory((e.target.value || null) as SmallCategory)}
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">— Nessuna categoria —</option>
+                {SMALL_CATEGORIES.map(c => (
+                  <option key={c.code} value={c.code!}>{c.longLabel}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <ParentSelect record={r} value={parentId} onChange={setParentId} />
         </div>

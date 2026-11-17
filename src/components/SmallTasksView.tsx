@@ -30,14 +30,38 @@ const PRIORITIES = [
 
 // ─── Category badge ───────────────────────────────────────────────────────────
 
-function CatBadge({ code }: { code: string | null }) {
+/**
+ * Badge categoria. Se riceve `onChange` diventa un selettore rapido:
+ * un <select> nativo trasparente sovrapposto al badge, così funziona anche su mobile.
+ */
+function CatBadge({ code, onChange }: { code: string | null; onChange?: (c: SmallCategory) => void }) {
   const color = categoryColor(code)
-  return (
+  const badge = (
     <span
-      className="text-xs px-2 py-0.5 rounded-full font-medium text-white shrink-0"
+      className={`text-xs px-2 py-0.5 rounded-full font-medium text-white shrink-0 inline-flex items-center gap-1 ${onChange ? 'cursor-pointer hover:opacity-90' : ''}`}
       style={{ backgroundColor: color }}
+      title={onChange ? 'Cambia categoria' : undefined}
     >
       {categoryLabel(code)}
+      {onChange && <span className="text-[9px] opacity-80">▾</span>}
+    </span>
+  )
+  if (!onChange) return badge
+  return (
+    <span className="relative shrink-0 inline-flex" onClick={e => e.stopPropagation()} draggable={false}>
+      {badge}
+      <select
+        value={code ?? ''}
+        onChange={e => onChange((e.target.value || null) as SmallCategory)}
+        onMouseDown={e => e.stopPropagation()}
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        aria-label="Categoria"
+      >
+        <option value="">Nessuna categoria</option>
+        {CATEGORIES.filter(c => c.code).map(c => (
+          <option key={c.code} value={c.code!}>{c.label}</option>
+        ))}
+      </select>
     </span>
   )
 }
@@ -159,11 +183,14 @@ function AddForm({ onAdd }: AddFormProps) {
 
 // ─── Lista rapida ─────────────────────────────────────────────────────────────
 
-function ListaView({ records, showAddForm = true, onToggle, onDelete, onAdd }: {
+type CategoryHandler = (id: string, category: SmallCategory) => void
+
+function ListaView({ records, showAddForm = true, onToggle, onDelete, onCategory, onAdd }: {
   records: TbRecord[]
   showAddForm?: boolean
   onToggle: (r: TbRecord) => void
   onDelete: (id: string) => void
+  onCategory: CategoryHandler
   onAdd: AddFormProps['onAdd']
 }) {
   const open = records.filter(r => r.rec_status !== 'chiuso')
@@ -173,7 +200,7 @@ function ListaView({ records, showAddForm = true, onToggle, onDelete, onAdd }: {
     <div className="flex flex-col gap-2">
       {showAddForm && <AddForm onAdd={onAdd} />}
       {open.map(r => (
-        <ListRow key={r.rec_id} record={r} onToggle={onToggle} onDelete={onDelete} />
+        <ListRow key={r.rec_id} record={r} onToggle={onToggle} onDelete={onDelete} onCategory={onCategory} />
       ))}
       {done.length > 0 && (
         <>
@@ -181,7 +208,7 @@ function ListaView({ records, showAddForm = true, onToggle, onDelete, onAdd }: {
             <div className="text-xs text-gray-400 uppercase tracking-wide mt-3 mb-1">Completati ({done.length})</div>
           )}
           {done.map(r => (
-            <ListRow key={r.rec_id} record={r} onToggle={onToggle} onDelete={onDelete} done />
+            <ListRow key={r.rec_id} record={r} onToggle={onToggle} onDelete={onDelete} onCategory={onCategory} done />
           ))}
         </>
       )}
@@ -192,10 +219,11 @@ function ListaView({ records, showAddForm = true, onToggle, onDelete, onAdd }: {
   )
 }
 
-function ListRow({ record: r, onToggle, onDelete, done = false }: {
+function ListRow({ record: r, onToggle, onDelete, onCategory, done = false }: {
   record: TbRecord
   onToggle: (r: TbRecord) => void
   onDelete: (id: string) => void
+  onCategory: CategoryHandler
   done?: boolean
 }) {
   const [showEdit, setShowEdit] = useState(false)
@@ -239,7 +267,7 @@ function ListRow({ record: r, onToggle, onDelete, done = false }: {
           )}
         </div>
 
-        <CatBadge code={r.rec_ws_code} />
+        <CatBadge code={r.rec_ws_code} onChange={done ? undefined : c => onCategory(r.rec_id, c)} />
 
         {/* Azioni */}
         <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -309,10 +337,11 @@ const KANBAN_COLS: { status: SmallStatus; label: string; color: string }[] = [
   { status: 'chiuso',      label: 'Fatto',    color: '#2E7D32' },
 ]
 
-function KanbanView({ records, onMove, onDelete, onAdd }: {
+function KanbanView({ records, onMove, onDelete, onCategory, onAdd }: {
   records: TbRecord[]
   onMove: (id: string, status: SmallStatus) => void
   onDelete: (id: string) => void
+  onCategory: CategoryHandler
   onAdd: AddFormProps['onAdd']
 }) {
   const [dragging, setDragging] = useState<string | null>(null)
@@ -363,6 +392,7 @@ function KanbanView({ records, onMove, onDelete, onAdd }: {
                 record={r}
                 onMove={onMove}
                 onDelete={onDelete}
+                onCategory={onCategory}
                 dragging={dragging === r.rec_id}
                 onDragStart={handleDragStart}
               />
@@ -374,10 +404,11 @@ function KanbanView({ records, onMove, onDelete, onAdd }: {
   )
 }
 
-function KanbanCard({ record: r, onMove, onDelete, dragging, onDragStart }: {
+function KanbanCard({ record: r, onMove, onDelete, onCategory, dragging, onDragStart }: {
   record: TbRecord
   onMove: (id: string, status: SmallStatus) => void
   onDelete: (id: string) => void
+  onCategory: CategoryHandler
   dragging: boolean
   onDragStart: (e: React.DragEvent, id: string) => void
 }) {
@@ -438,7 +469,7 @@ function KanbanCard({ record: r, onMove, onDelete, dragging, onDragStart }: {
         )}
 
         <div className="flex items-center gap-2 flex-wrap">
-          <CatBadge code={r.rec_ws_code} />
+          <CatBadge code={r.rec_ws_code} onChange={c => onCategory(r.rec_id, c)} />
           <PriBadge priority={r.rec_priority} />
           <DueLabel date={r.rec_due_date} />
         </div>
@@ -479,10 +510,11 @@ function KanbanCard({ record: r, onMove, onDelete, dragging, onDragStart }: {
 
 // ─── Per categoria ────────────────────────────────────────────────────────────
 
-function CategoriaView({ records, onToggle, onDelete, onAdd }: {
+function CategoriaView({ records, onToggle, onDelete, onCategory, onAdd }: {
   records: TbRecord[]
   onToggle: (r: TbRecord) => void
   onDelete: (id: string) => void
+  onCategory: CategoryHandler
   onAdd: AddFormProps['onAdd']
 }) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
@@ -520,7 +552,7 @@ function CategoriaView({ records, onToggle, onDelete, onAdd }: {
               <div className="border-t border-gray-100 px-4 py-3 bg-gray-50 flex flex-col gap-2">
                 <AddForm onAdd={params => onAdd({ ...params, category: g.code as SmallCategory })} />
                 {g.records.map(r => (
-                  <ListRow key={r.rec_id} record={r} onToggle={onToggle} onDelete={onDelete} done={r.rec_status === 'chiuso'} />
+                  <ListRow key={r.rec_id} record={r} onToggle={onToggle} onDelete={onDelete} onCategory={onCategory} done={r.rec_status === 'chiuso'} />
                 ))}
               </div>
             )}
@@ -537,7 +569,7 @@ function CategoriaView({ records, onToggle, onDelete, onAdd }: {
 // ─── SmallTasksView principale ────────────────────────────────────────────────
 
 export function SmallTasksView() {
-  const { records, loading, addTask, updateStatus, deleteTask } = useSmallTasks()
+  const { records, loading, addTask, updateStatus, deleteTask, updateCategory } = useSmallTasks()
 
   const [view, setView] = useState<SmallView>('lista')
   const [filterCats, setFilterCats] = useState<Set<string>>(new Set())
@@ -714,6 +746,7 @@ export function SmallTasksView() {
           showAddForm={filterStatus !== 'chiusi'}
           onToggle={handleToggle}
           onDelete={deleteTask}
+          onCategory={updateCategory}
           onAdd={addTask}
         />
       ) : view === 'kanban' ? (
@@ -721,6 +754,7 @@ export function SmallTasksView() {
           records={viewRecords}
           onMove={handleMove}
           onDelete={deleteTask}
+          onCategory={updateCategory}
           onAdd={addTask}
         />
       ) : (
@@ -728,6 +762,7 @@ export function SmallTasksView() {
           records={viewRecords}
           onToggle={handleToggle}
           onDelete={deleteTask}
+          onCategory={updateCategory}
           onAdd={addTask}
         />
       )}

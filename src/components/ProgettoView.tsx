@@ -5,6 +5,8 @@ import { useProjectRecords } from '../hooks/useProjectRecords'
 import { RecordDetailModal } from './RecordDetailModal'
 import { ProjectTree } from './ProjectTree'
 import { NewProjectModal } from './NewProjectModal'
+import { DeleteProjectModal } from './DeleteProjectModal'
+import { MergeProjectsModal } from './MergeProjectsModal'
 import { kindLabel, dueDateLabel, isOverdue } from '../utils/format'
 import { buildTree, treeToText } from '../lib/recordTree'
 import { exportProjectDocx, downloadBlob } from '../lib/exportProjectDocx'
@@ -153,6 +155,9 @@ export function ProgettoView({ initialPrjId }: { initialPrjId?: string | null } 
   const { workspaces } = useWorkspaces()
   const [selectedPrjId, setSelectedPrjId] = useState<string | null>(initialPrjId ?? null)
   const [showNewProject, setShowNewProject] = useState(false)
+  const [showDelete, setShowDelete] = useState(false)
+  const [showMerge, setShowMerge] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
   const [filterKind, setFilterKind] = useState<KindFilter>('all')
   const [filterText, setFilterText] = useState('')
   const [view, setView] = useState<ViewMode>('elenco')
@@ -226,6 +231,29 @@ export function ProgettoView({ initialPrjId }: { initialPrjId?: string | null } 
     if (!selectedProject) return ''
     return treeToText(treeRoots, `${selectedProject.prj_code} — ${selectedProject.prj_label}`, itemsByRec)
   }, [treeRoots, selectedProject, itemsByRec])
+
+  async function handleProjectDeleted() {
+    const code = selectedProject?.prj_code
+    setShowDelete(false)
+    setSelectedPrjId(null)
+    setFilterText('')
+    await refetchProjects()
+    setNotice(`Progetto ${code} eliminato.`)
+  }
+
+  async function handleProjectsMerged(keptPrjId: string) {
+    setShowMerge(false)
+    await refetchProjects()
+    setSelectedPrjId(keptPrjId)
+    await refetch()
+    setNotice('Progetti fusi correttamente.')
+  }
+
+  useEffect(() => {
+    if (!notice) return
+    const t = setTimeout(() => setNotice(null), 5000)
+    return () => clearTimeout(t)
+  }, [notice])
 
   async function handleExportDocx() {
     if (!selectedProject || exporting) return
@@ -307,10 +335,38 @@ export function ProgettoView({ initialPrjId }: { initialPrjId?: string | null } 
           />
         )}
 
+        {showDelete && selectedProject && (
+          <DeleteProjectModal
+            project={selectedProject}
+            recordCount={records.length}
+            onDeleted={handleProjectDeleted}
+            onCancel={() => setShowDelete(false)}
+          />
+        )}
+
+        {showMerge && selectedProject && (
+          <MergeProjectsModal
+            project={selectedProject}
+            projects={projects}
+            workspaces={workspaces}
+            recordCount={records.length}
+            onMerged={handleProjectsMerged}
+            onCancel={() => setShowMerge(false)}
+          />
+        )}
+
+        {notice && (
+          <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-50 border border-green-200 text-sm text-green-800 print:hidden">
+            <span>✓</span>
+            <span>{notice}</span>
+            <button onClick={() => setNotice(null)} className="ml-auto text-green-600 hover:text-green-800 text-xs">×</button>
+          </div>
+        )}
+
         {/* Info progetto selezionato */}
         {selectedProject && (
           <div
-            className="flex items-center gap-3 px-4 py-2.5 rounded-lg border"
+            className="flex flex-wrap items-center gap-3 px-4 py-2.5 rounded-lg border"
             style={{
               borderTopColor: '#E0E0E0',
               borderRightColor: '#E0E0E0',
@@ -337,6 +393,24 @@ export function ProgettoView({ initialPrjId }: { initialPrjId?: string | null } 
             }`}>
               {selectedProject.prj_status}
             </span>
+            <div className="flex items-center gap-1.5 print:hidden">
+              <button
+                onClick={() => setShowMerge(true)}
+                disabled={loading}
+                title="Fondi con un altro progetto"
+                className="text-xs px-2.5 py-1 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors disabled:opacity-50"
+              >
+                ⇄ Fondi
+              </button>
+              <button
+                onClick={() => setShowDelete(true)}
+                disabled={loading}
+                title="Elimina progetto"
+                className="text-xs px-2.5 py-1 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-red-50 hover:border-red-300 hover:text-red-700 transition-colors disabled:opacity-50"
+              >
+                🗑 Elimina
+              </button>
+            </div>
           </div>
         )}
       </div>
